@@ -3,8 +3,8 @@ Artifact: database.py
 Description: Uses SQLite to handle database operations
 Authors: Cole Cooper
 Date Created: 2/14/2026
-Date Last Modified: 2/14/2026
-Last Modified by: Cole Cooper
+Date Last Modified: 2/15/2026
+Last Modified by: Carson Abbott
 """
 
 # Import Libraries and Tools
@@ -64,6 +64,24 @@ class DatabaseBackend:
         # Makes a list out of all returned books
         return [dict(row) for row in rows]
 
+    # Returns a list of dictionaries that is all books based on a certain status
+    def get_books_by_status(self, status) -> List[Dict]:
+        if (status == "All"):
+            self.cursor.execute('SELECT * FROM books ORDER BY title')
+        else:
+            formattedStatus = ""
+            if (status == "To Read"):
+                formattedStatus = "to-read"
+            else:
+                formattedStatus = status.lower()
+            # Get all info about all books based on a certain status and order by title
+            self.cursor.execute('SELECT * FROM books WHERE status = ? ORDER BY title', (formattedStatus,))
+        
+        # Stores all data from SQL query into rows
+        rows = self.cursor.fetchall()
+        # Makes a list out of all returned books
+        return [dict(row) for row in rows]
+    
     def close(self):
         # Closes database connection
         if self.connection:

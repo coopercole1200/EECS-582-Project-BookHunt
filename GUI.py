@@ -4,7 +4,7 @@ Description: Main entry point. Starts application.
 Authors: Cole Cooper
 Date Created: 2/14/2026
 Date Last Modified: 2/15/2026
-Last Modified by: Cole Cooper
+Last Modified by: Carson Abbott
 """
 
 import tkinter as tk
@@ -25,7 +25,7 @@ class BookHuntGUI:
         self.setup_ui()
         
         # Load example books
-        self.load_books()
+        self.load_books(self.db.get_all_books())
 
     def setup_ui(self):
         # Title
@@ -53,6 +53,20 @@ class BookHuntGUI:
         deletion_frame.pack(fill=tk.X, ipady=20)
         delete_book_button = tk.Button(deletion_frame, text="Delete a Book Entry", command=self.delete_book)
         delete_book_button.pack(side=tk.LEFT, padx=10, pady=10)
+        
+        # Add filter by status drop down
+        dropdown_options = ["All", "Completed", "To Read", "Currently Reading"]
+        status_frame = tk.Frame(self.root, bg="gray90")
+        status_frame.pack(fill=tk.X, ipady=20)
+        status_dropdown = ttk.Combobox(status_frame, values=dropdown_options)
+        status_dropdown.set("Filter by status")
+        status_dropdown.pack(side=tk.RIGHT, padx=10, pady=10)
+
+        # Add apply filter button field
+        apply_filter_frame = tk.Frame(self.root, bg="gray90")
+        apply_filter_frame.pack(fill=tk.X, ipady=1)
+        apply_filter_button = tk.Button(apply_filter_frame, text="Apply Filter(s)", command=lambda: self.apply_filters(status_dropdown.get()))
+        apply_filter_button.pack(side=tk.RIGHT, padx=10, pady=10)
 
         # Main content area
         content_frame = tk.Frame(self.root, bg="gray90")
@@ -104,17 +118,19 @@ class BookHuntGUI:
     def create_book(self) :
         """create book helper function"""
         self.db.create_book()
-        self.load_books()
+        self.load_books(self.db.get_all_books())
 
     def delete_book(self) :
         """delete book helper function"""
         self.db.delete_book()
-        self.load_books()
+        self.load_books(self.db.get_all_books())
 
-    def load_books(self):
-        # Get books from database
-        books = self.db.get_all_books()
-        
+    def apply_filters(self, selectedStatus):
+        """apply filters helper function"""
+        self.clear_treeview()
+        self.load_books(self.db.get_books_by_status(selectedStatus))
+
+    def load_books(self, books):
         # Update info label
         self.info_label.config(text=f"Your Book Collection ({len(books)} books)")
         
@@ -143,7 +159,11 @@ class BookHuntGUI:
                 values=values,
                 tags=(tag,)
             )
-
+    
+    def clear_treeview(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+    
 
 def main():
     root = tk.Tk()
