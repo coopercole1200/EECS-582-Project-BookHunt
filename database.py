@@ -26,7 +26,7 @@ class DatabaseBackend:
         #Creates columns for each in table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS books (
-                id INTEGEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY,
                 title TEXT NOT NULL,
                 author TEXT NOT NULL,
                 genre TEXT,
@@ -38,6 +38,22 @@ class DatabaseBackend:
         self.connection.commit()
         # Debug message
         print("Database initialized successfully")
+
+    #create a book item in the book table
+    def create_book(self) :
+        """called on create book button press, create an entry in the book table with specified info"""
+        #TODO: CHANGE TO ACTUALLY ACCEPT USER DEFINED INFO
+        self.cursor.execute('''
+                    INSERT INTO books (title, author, genre, year, rating, status)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', ("The Analects", "Confucius's Disciples", "Philosophy", -221 , 4, "currently reading"))
+        self.connection.commit()
+
+    def delete_book(self) :
+        """called on delete book button press, delete specific entry"""
+        #TODO: CHANGE TO ACTUALLY ACCEPT USER DEFINED INFO
+        self.cursor.execute('DELETE FROM books WHERE id = ?', (4,))
+        self.connection.commit()
 
     # Returns a list of dictionaries that is all books
     def get_all_books(self) -> List[Dict]:

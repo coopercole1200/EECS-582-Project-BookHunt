@@ -26,7 +26,7 @@ class BookHuntGUI:
         
         # Load example books
         self.load_books()
-    
+
     def setup_ui(self):
         # Title
         title_frame = tk.Frame(self.root, bg="SlateBlue3", height=80)
@@ -41,7 +41,19 @@ class BookHuntGUI:
             fg="white"
         )
         title_label.pack(expand=True)
-        
+
+        # Add create book button field
+        creation_frame = tk.Frame(self.root, bg="gray90")
+        creation_frame.pack(fill=tk.X, ipady=20)
+        create_book_button = tk.Button(creation_frame, text="Create a Book Entry", command=self.db.create_book)
+        create_book_button.pack(side=tk.LEFT, padx=10, pady=10)
+
+        # Add delete book button field
+        deletion_frame = tk.Frame(self.root, bg="gray90")
+        deletion_frame.pack(fill=tk.X, ipady=20)
+        delete_book_button = tk.Button(deletion_frame, text="Delete a Book Entry", command=self.db.delete_book)
+        delete_book_button.pack(side=tk.LEFT, padx=10, pady=10)
+
         # Main content area
         content_frame = tk.Frame(self.root, bg="gray90")
         content_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
@@ -88,7 +100,7 @@ class BookHuntGUI:
         # Alternate the row colors
         self.tree.tag_configure('oddrow', background='white')
         self.tree.tag_configure('evenrow', background='gray95')
-    
+
     def load_books(self):
         # Get books from database
         books = self.db.get_all_books()
