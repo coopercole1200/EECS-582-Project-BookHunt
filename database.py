@@ -77,7 +77,7 @@ if __name__ == "__main__":
     
     # Check if database is empty
     books = db.get_all_books()
-    
+
     if len(books) == 0:
         print("Adding sample books...")
         # Add some sample books directly for testing
