@@ -42,6 +42,11 @@ class BookHuntGUI:
         )
         title_label.pack(expand=True)
 
+        # Right click menu for tree view
+        self.tree_menu = tk.Menu(self.root, tearoff=0)
+        self.tree_menu.add_command(label="Delete Book", command=self.delete_book)
+        self.tree_menu.add_command(label="Edit Book")
+
         # Add create book button field
         creation_frame = tk.Frame(self.root, bg="gray90")
         creation_frame.pack(fill=tk.X, ipady=20)
@@ -115,15 +120,41 @@ class BookHuntGUI:
         self.tree.tag_configure('oddrow', background='white')
         self.tree.tag_configure('evenrow', background='gray95')
 
+        # Bind right click event to the tree to access edit (and eventually delete) book functionality
+        self.tree.bind("<Button-3>", self.tree_right_click)
+
     def create_book(self) :
         """create book helper function"""
         self.db.create_book()
+        self.clear_treeview()
         self.load_books(self.db.get_all_books())
 
     def delete_book(self) :
         """delete book helper function"""
         self.db.delete_book()
+        self.clear_treeview()
         self.load_books(self.db.get_all_books())
+
+    def tree_right_click(self, event):
+        """grab info of hovered book, display options to interact with it"""
+
+        #if the click occurred on top of a book item in the tree, get the tree item id
+        tree_item_id = self.tree.identify_row(event.y)
+
+        #if we are not selecting a book item, there is not action to take
+        if not tree_item_id :
+            return
+
+        #visually select the item we are supposed to be hovering over
+        self.tree.selection_set(tree_item_id)
+
+        #get the attributes of the book entity we are hovering over
+        book_attributes = self.tree.item(tree_item_id, "values")
+
+        #display the pop-up menu to delete or edit the book item
+        self.tree_menu.post(event.x_root, event.y_root)
+        self.tree_menu.grab_release()
+
 
     def apply_filters(self, selectedStatus):
         """apply filters helper function"""
