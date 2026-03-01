@@ -83,12 +83,6 @@ class BookHuntGUI:
         )
         self.create_status_dropdown.set("to-read")
         self.create_status_dropdown.pack(side=tk.LEFT, padx=(0, 10))
-
-        # Add delete book button field
-        deletion_frame = tk.Frame(self.root, bg="gray90")
-        deletion_frame.pack(fill=tk.X, ipady=20)
-        delete_book_button = tk.Button(deletion_frame, text="Delete a Book Entry", command=self.delete_book)
-        delete_book_button.pack(side=tk.LEFT, padx=10, pady=10)
         
         # Add filter by status drop down
         dropdown_options = ["All", "Completed", "To Read", "Currently Reading"]
@@ -298,7 +292,7 @@ class BookHuntGUI:
         #after applying the update, destroy the window
         window.destroy()
 
-        # update the list display to reflect new edited book
+        #update the list display to reflect new edited book
         self.clear_treeview()
         self.load_books(self.db.get_all_books("id"))
 
