@@ -3,8 +3,8 @@ Artifact: database.py
 Description: Uses SQLite to handle database operations
 Authors: Cole Cooper
 Date Created: 2/14/2026
-Date Last Modified: 2/15/2026
-Last Modified by: Carson Abbott
+Date Last Modified: 2/28/2026
+Last Modified by: Ebraheem AlAamer
 """
 
 # Import Libraries and Tools
@@ -40,19 +40,49 @@ class DatabaseBackend:
         print("Database initialized successfully")
 
     #create a book item in the book table
-    def create_book(self) :
-        """called on create book button press, create an entry in the book table with specified info"""
-        #TODO: CHANGE TO ACTUALLY ACCEPT USER DEFINED INFO
+    def create_book(self, title=None, author=None, genre=None, year=None, rating=None, status="to-read") :
+        """called on create book button press, create an entry in the book table with specified info
+
+        Backwards-compatible:
+        - If no user-defined info is provided, inserts the original hardcoded example row.
+        - If fields are provided, uses them as parameters for the INSERT query.
+        """
+        # If nothing provided, keep the original example insert so existing behavior doesn't break.
+        if title is None and author is None and genre is None and year is None and rating is None and status == "to-read":
+            #TODO: CHANGE TO ACTUALLY ACCEPT USER DEFINED INFO
+            self.cursor.execute('''
+                        INSERT INTO books (title, author, genre, year, rating, status)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', ("The Analects", "Confucius's Disciples", "Philosophy", -221 , 4, "currently reading"))
+            self.connection.commit()
+            return
+
+        # Normalize/clean values for DB insert
+        title = (title or "").strip()
+        author = (author or "").strip()
+        genre = (genre or "").strip()
+
+        # Allow empty strings to become NULL for optional fields
+        genre_db = genre if genre != "" else None
+
         self.cursor.execute('''
                     INSERT INTO books (title, author, genre, year, rating, status)
                     VALUES (?, ?, ?, ?, ?, ?)
-                ''', ("The Analects", "Confucius's Disciples", "Philosophy", -221 , 4, "currently reading"))
+                ''', (title, author, genre_db, year, rating, status))
         self.connection.commit()
 
-    def delete_book(self) :
-        """called on delete book button press, delete specific entry"""
+    def delete_book(self, book_id=None) :
+        """called on delete book button press, delete specific entry
+
+        Backwards-compatible:
+        - If book_id is None, deletes the original hardcoded id=4 row (original behavior).
+        - If book_id is provided, deletes that row instead.
+        """
         #TODO: CHANGE TO ACTUALLY ACCEPT USER DEFINED INFO
-        self.cursor.execute('DELETE FROM books WHERE id = ?', (4,))
+        if book_id is None:
+            self.cursor.execute('DELETE FROM books WHERE id = ?', (4,))
+        else:
+            self.cursor.execute('DELETE FROM books WHERE id = ?', (book_id,))
         self.connection.commit()
 
     # Returns a list of dictionaries that is all books
