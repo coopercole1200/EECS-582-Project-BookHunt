@@ -77,24 +77,15 @@ class DatabaseBackend:
                 ''', (title, author, genre_db, year, rating, status))
         self.connection.commit()
 
-    def delete_book(self, book_id=None) :
-        """called on delete book button press, delete specific entry
-
-        Backwards-compatible:
-        - If book_id is None, deletes the original hardcoded id=4 row (original behavior).
-        - If book_id is provided, deletes that row instead.
-        """
-        #TODO: CHANGE TO ACTUALLY ACCEPT USER DEFINED INFO
-        if book_id is None:
-            self.cursor.execute('DELETE FROM books WHERE id = ?', (4,))
-        else:
-            self.cursor.execute('DELETE FROM books WHERE id = ?', (book_id,))
+    def delete_book(self, book_id) :
+        """called on delete book button press, delete specific entry"""
+        self.cursor.execute('DELETE FROM books WHERE id = ?', (book_id,))
         self.connection.commit()
 
     def update_book(self, new_attributes, book_id):
         """update book attributes of specific entity given by book_id"""
         query = f'UPDATE books SET title = ?, author = ?, genre = ?, year = ?, status = ? WHERE id = ?'
-        self.cursor.execute(query, (new_attributes[0], new_attributes[1], new_attributes[2], int(new_attributes[3]), new_attributes[4], book_id))
+        self.cursor.execute(query, (new_attributes[0], new_attributes[1], new_attributes[2], int(new_attributes[3]), new_attributes[4].lower(), book_id))
         self.connection.commit()
 
     def get_book_count(self) :
@@ -114,15 +105,15 @@ class DatabaseBackend:
     # Returns a list of dictionaries that is all books based on a certain status
     def get_books_by_status(self, status) -> List[Dict]:
         if (status == "All"):
-            self.cursor.execute('SELECT * FROM books ORDER BY title')
+            self.cursor.execute('SELECT * FROM books ORDER BY id')
         else:
             formattedStatus = ""
             if (status == "To Read"):
                 formattedStatus = "to-read"
             else:
                 formattedStatus = status.lower()
-            # Get all info about all books based on a certain status and order by title
-            self.cursor.execute('SELECT * FROM books WHERE status = ? ORDER BY title', (formattedStatus,))
+            # Get all info about all books based on a certain status and order by id
+            self.cursor.execute('SELECT * FROM books WHERE status = ? ORDER BY id', (formattedStatus,))
         
         # Stores all data from SQL query into rows
         rows = self.cursor.fetchall()

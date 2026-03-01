@@ -219,9 +219,9 @@ class BookHuntGUI:
 
     def delete_book(self) :
         """delete book helper function"""
-        self.db.delete_book()
+        self.db.delete_book(self.sel_book_id)
         self.clear_treeview()
-        self.load_books(self.db.get_all_books("id"))
+        self.load_books(self.db.get_all_books())
 
     def edit_book_toplevel(self):
         """use old attributes to get book item, display window for new attributes, make change"""
@@ -257,7 +257,7 @@ class BookHuntGUI:
         author_field = tk.Entry(entry_frame)
         genre_field = tk.Entry(entry_frame)
         year_field = tk.Entry(entry_frame)
-        status_field = ttk.Combobox(entry_frame, values=["To Read", "Currently Reading", "Finished"])
+        status_field = ttk.Combobox(entry_frame, values=["To Read", "Currently Reading", "Completed"])
 
         #give the entry fields labels and actually pack them
         tk.Label(entry_frame, text="Enter Book Title:").pack(anchor="w")
