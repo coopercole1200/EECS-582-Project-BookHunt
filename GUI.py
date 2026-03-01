@@ -3,8 +3,8 @@ Artifact: GUI.py
 Description: Main entry point. Starts application. 
 Authors: Cole Cooper
 Date Created: 2/14/2026
-Date Last Modified: 2/15/2026
-Last Modified by: Carson Abbott
+Date Last Modified: 2/28/2026
+Last Modified by: Ebraheem AlAamer
 """
 
 import tkinter as tk
@@ -52,6 +52,37 @@ class BookHuntGUI:
         creation_frame.pack(fill=tk.X, ipady=20)
         create_book_button = tk.Button(creation_frame, text="Create a Book Entry", command=self.create_book)
         create_book_button.pack(side=tk.LEFT, padx=10, pady=10)
+
+        # --- Book attribute input fields (used by Create a Book Entry) ---
+        tk.Label(creation_frame, text="Title:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2))
+        self.title_entry = tk.Entry(creation_frame, width=18)
+        self.title_entry.pack(side=tk.LEFT, padx=(0, 10))
+
+        tk.Label(creation_frame, text="Author:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
+        self.author_entry = tk.Entry(creation_frame, width=18)
+        self.author_entry.pack(side=tk.LEFT, padx=(0, 10))
+
+        tk.Label(creation_frame, text="Genre:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
+        self.genre_entry = tk.Entry(creation_frame, width=14)
+        self.genre_entry.pack(side=tk.LEFT, padx=(0, 10))
+
+        tk.Label(creation_frame, text="Year:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
+        self.year_entry = tk.Entry(creation_frame, width=6)
+        self.year_entry.pack(side=tk.LEFT, padx=(0, 10))
+
+        tk.Label(creation_frame, text="Rating:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
+        self.rating_entry = tk.Entry(creation_frame, width=6)
+        self.rating_entry.pack(side=tk.LEFT, padx=(0, 10))
+
+        tk.Label(creation_frame, text="Status:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
+        self.create_status_dropdown = ttk.Combobox(
+            creation_frame,
+            values=["to-read", "completed", "currently reading"],
+            width=16,
+            state="readonly"
+        )
+        self.create_status_dropdown.set("to-read")
+        self.create_status_dropdown.pack(side=tk.LEFT, padx=(0, 10))
 
         # Add delete book button field
         deletion_frame = tk.Frame(self.root, bg="gray90")
@@ -125,10 +156,66 @@ class BookHuntGUI:
         self.tree.bind("<Button-3>", self.tree_right_click)
 
     def create_book(self) :
-        """create book helper function"""
-        self.db.create_book()
-        self.clear_treeview()
-        self.load_books(self.db.get_all_books("id"))
+        """create book helper function
+
+        Uses the text entry fields next to the Create button (title/author/etc.) as parameters
+        to the database INSERT. If the fields don't exist for any reason, it falls back to
+        the original behavior (hardcoded example insert).
+        """
+        # Backwards-compatible fallback
+        if not hasattr(self, "title_entry") or not hasattr(self, "author_entry"):
+            self.db.create_book()
+            self.load_books(self.db.get_all_books())
+            return
+
+        title = self.title_entry.get().strip()
+        author = self.author_entry.get().strip()
+        genre = self.genre_entry.get().strip() if hasattr(self, "genre_entry") else ""
+
+        # Validate required fields
+        if title == "" or author == "":
+            self.info_label.config(text="Title and Author are required to create a book.")
+            return
+
+        # Optional conversions
+        year_raw = self.year_entry.get().strip() if hasattr(self, "year_entry") else ""
+        year = None
+        if year_raw != "":
+            try:
+                year = int(year_raw)
+            except ValueError:
+                self.info_label.config(text="Year must be an integer (e.g., 2024).")
+                return
+
+        rating_raw = self.rating_entry.get().strip() if hasattr(self, "rating_entry") else ""
+        rating = None
+        if rating_raw != "":
+            try:
+                rating = float(rating_raw)
+            except ValueError:
+                self.info_label.config(text="Rating must be a number (e.g., 4 or 4.5).")
+                return
+
+        status = self.create_status_dropdown.get().strip() if hasattr(self, "create_status_dropdown") else "to-read"
+        if status == "":
+            status = "to-read"
+
+        # Create in DB using user-provided values
+        self.db.create_book(title, author, genre, year, rating, status)
+
+        # Clear inputs after successful insert
+        self.title_entry.delete(0, tk.END)
+        self.author_entry.delete(0, tk.END)
+        if hasattr(self, "genre_entry"):
+            self.genre_entry.delete(0, tk.END)
+        if hasattr(self, "year_entry"):
+            self.year_entry.delete(0, tk.END)
+        if hasattr(self, "rating_entry"):
+            self.rating_entry.delete(0, tk.END)
+        if hasattr(self, "create_status_dropdown"):
+            self.create_status_dropdown.set("to-read")
+
+        self.load_books(self.db.get_all_books())
 
     def delete_book(self) :
         """delete book helper function"""
@@ -243,6 +330,8 @@ class BookHuntGUI:
         self.load_books(self.db.get_books_by_status(selectedStatus))
 
     def load_books(self, books):
+        # Prevent duplicate rows when reloading
+        self.clear_treeview()
         # Update info label
         num_books = self.db.get_book_count()
         self.info_label.config(text=f"Your Book Collection ({num_books} books)")
