@@ -10,7 +10,6 @@ Last Modified by: Carson Abbott
 # Import Libraries and Tools
 import sqlite3
 from typing import List, Dict, Optional
-global_id_counter = 3 # Please increment if you add more samples at the bottom. Terrible solution ik, but it works for now :P - Carson
 class DatabaseBackend:
     def __init__(self, db_path: str = "books.db"):
         # Initialize database connection and create tables
@@ -19,10 +18,6 @@ class DatabaseBackend:
         self.connection.row_factory = sqlite3.Row
         self.cursor = self.connection.cursor()
         self._create_tables()
-        
-        # Initializes ID_counter based on what's already in the database
-        self.ID_counter = global_id_counter
-        print(f"Initialized id counter to: {self.ID_counter}")
 
     def _create_tables(self):
         # Create initial tables
@@ -100,7 +95,7 @@ if __name__ == "__main__":
     # Check if database is empty
     books = db.get_all_books()
 
-    if len(books) == 0:
+    """if len(books) == 0:
         print("Adding sample books...")
         # Add some sample books directly for testing
         db.cursor.execute('''
@@ -121,7 +116,7 @@ if __name__ == "__main__":
         db.connection.commit()
         print("Sample books added!")
     else:
-        print(f"Database already has {len(books)} books")
+        print(f"Database already has {len(books)} books")"""
     
     # Display all books
     books = db.get_all_books()

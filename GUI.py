@@ -117,9 +117,6 @@ class BookHuntGUI:
         # Bind right click event to the tree to access edit (and eventually delete) book functionality
         self.tree.bind("<Button-3>", self.tree_right_click)
 
-        # Tracks where books are mapped in the GUI table. Key=row index, Value=book
-        self.book_mapping = {}
-
     def create_book(self) :
         """create book helper function"""
         self.db.create_book()
@@ -140,7 +137,7 @@ class BookHuntGUI:
         #if the click occurred on top of a book item in the tree, get the tree item id
         tree_item_id = self.tree.identify_row(event.y)
 
-        #if we are not selecting a book item, there is not action to take
+        #if we are not selecting a book item, there is no action to take
         if not tree_item_id :
             return
 
