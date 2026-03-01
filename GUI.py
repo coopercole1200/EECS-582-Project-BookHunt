@@ -52,12 +52,6 @@ class BookHuntGUI:
         creation_frame.pack(fill=tk.X, ipady=20)
         create_book_button = tk.Button(creation_frame, text="Create a Book Entry", command=self.create_book)
         create_book_button.pack(side=tk.LEFT, padx=10, pady=10)
-
-        # Add delete book button field
-        deletion_frame = tk.Frame(self.root, bg="gray90")
-        deletion_frame.pack(fill=tk.X, ipady=20)
-        delete_book_button = tk.Button(deletion_frame, text="Delete a Book Entry", command=self.delete_book)
-        delete_book_button.pack(side=tk.LEFT, padx=10, pady=10)
         
         # Add filter by status drop down
         dropdown_options = ["All", "Completed", "To Read", "Currently Reading"]
@@ -123,6 +117,9 @@ class BookHuntGUI:
         # Bind right click event to the tree to access edit (and eventually delete) book functionality
         self.tree.bind("<Button-3>", self.tree_right_click)
 
+        # Tracks where books are mapped in the GUI table. Key=row index, Value=book
+        self.book_mapping = {}
+
     def create_book(self) :
         """create book helper function"""
         self.db.create_book()
@@ -131,7 +128,9 @@ class BookHuntGUI:
 
     def delete_book(self) :
         """delete book helper function"""
-        self.db.delete_book()
+        tree_selected_item = self.tree.selection()[0]
+        item_index = self.tree.index(tree_selected_item)
+        self.db.delete_book(self.book_mapping[item_index]['id'])
         self.clear_treeview()
         self.load_books(self.db.get_all_books())
 
@@ -165,8 +164,12 @@ class BookHuntGUI:
         # Update info label
         self.info_label.config(text=f"Your Book Collection ({len(books)} books)")
         
+        # Reset the book mapping
+        self.book_mapping = {}
+
         # Insert books into table
         for idx, book in enumerate(books):
+            self.book_mapping[idx] = book
             tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
             
             # Format rating
