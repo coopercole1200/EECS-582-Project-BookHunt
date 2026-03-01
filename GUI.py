@@ -25,7 +25,7 @@ class BookHuntGUI:
         self.setup_ui()
         
         # Load example books
-        self.load_books(self.db.get_all_books())
+        self.load_books(self.db.get_all_books("id"))
 
     def setup_ui(self):
         # Title
@@ -41,6 +41,11 @@ class BookHuntGUI:
             fg="white"
         )
         title_label.pack(expand=True)
+
+        # Right click menu for tree view
+        self.tree_menu = tk.Menu(self.root, tearoff=0)
+        self.tree_menu.add_command(label="Delete Book", command=self.delete_book)
+        self.tree_menu.add_command(label="Edit Book", command=self.edit_book_toplevel)
 
         # Add create book button field
         creation_frame = tk.Frame(self.root, bg="gray90")
@@ -119,7 +124,7 @@ class BookHuntGUI:
         scrollbar = ttk.Scrollbar(tree_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        columns = ("Title", "Author", "Genre", "Year", "Rating", "Status")
+        columns = ("ID #", "Title", "Author", "Genre", "Year", "Rating", "Status")
         self.tree = ttk.Treeview(
             tree_frame,
             columns=columns,
@@ -129,6 +134,7 @@ class BookHuntGUI:
         scrollbar.config(command=self.tree.yview)
         
         # Configure columns
+        self.tree.column("ID #", width=25)
         self.tree.column("Title", width=200)
         self.tree.column("Author", width=150)
         self.tree.column("Genre", width=120)
@@ -145,6 +151,9 @@ class BookHuntGUI:
         # Alternate the row colors
         self.tree.tag_configure('oddrow', background='white')
         self.tree.tag_configure('evenrow', background='gray95')
+
+        # Bind right click event to the tree to access edit (and eventually delete) book functionality
+        self.tree.bind("<Button-3>", self.tree_right_click)
 
     def create_book(self) :
         """create book helper function
@@ -211,7 +220,109 @@ class BookHuntGUI:
     def delete_book(self) :
         """delete book helper function"""
         self.db.delete_book()
-        self.load_books(self.db.get_all_books())
+        self.clear_treeview()
+        self.load_books(self.db.get_all_books("id"))
+
+    def edit_book_toplevel(self):
+        """use old attributes to get book item, display window for new attributes, make change"""
+
+        #get all the attributes of the book entity
+        old_book_info = self.db.get_specific_book(self.sel_book_id)
+
+        #create a pop-up window for the user to specify new attributes and then apply the edit
+        self.display_edit_window(old_book_info)
+
+
+
+    def display_edit_window(self, old_attributes):
+        """create pop-up window, get user input, apply user input data to updating the book entry"""
+
+        #create the pop-up window, force focus onto it, and prevent user from interacting with main window while pop-up is up
+        edit_window = tk.Toplevel(self.root)
+        edit_window.title("Edit Book Entity")
+        edit_window.geometry("500x450")
+        edit_window.attributes('-topmost', True)
+        edit_window.focus_force()
+        edit_window.grab_set()
+
+        #create the frame where the entry fields will be
+        entry_frame = tk.Frame(edit_window)
+        entry_frame.pack(fill=tk.BOTH, expand=True)
+
+        #create a label giving user interaction instructions
+        tk.Label(entry_frame, text="Enter New Attributes for Book", font=("Arial", 20, "bold")).pack(side=tk.TOP)
+
+        #create the entry fields
+        title_field = tk.Entry(entry_frame)
+        author_field = tk.Entry(entry_frame)
+        genre_field = tk.Entry(entry_frame)
+        year_field = tk.Entry(entry_frame)
+        status_field = ttk.Combobox(entry_frame, values=["To Read", "Currently Reading", "Finished"])
+
+        #give the entry fields labels and actually pack them
+        tk.Label(entry_frame, text="Enter Book Title:").pack(anchor="w")
+        title_field.pack(anchor="w", fill=tk.X, ipadx=100)
+        tk.Label(entry_frame, text="Enter Author Name:").pack(anchor="w")
+        author_field.pack(anchor="w", fill=tk.X, ipadx=100)
+        tk.Label(entry_frame, text="Enter Book Genre:").pack(anchor="w")
+        genre_field.pack(anchor="w", fill=tk.X, ipadx=100)
+        tk.Label(entry_frame, text="Enter Year Published:").pack(anchor="w")
+        year_field.pack(anchor="w", fill=tk.X, ipadx=100)
+        tk.Label(entry_frame, text="Enter Reading Status:").pack(anchor="w")
+        status_field.pack(anchor="w")
+
+        # create a list to hold the references to the text boxes to be passed to apply_edit function
+        text_field_references = [title_field, author_field, genre_field, year_field, status_field]
+
+        #create the frame where the buttons show up, create the buttons, and then finally pack the frame and buttons
+        button_frame = tk.Frame(edit_window, bg="gray90")
+        cancel_button = tk.Button(button_frame, text="Cancel Edit", command=edit_window.destroy) #If not applying edit, simply destroy the window, no change
+        submit_button = tk.Button(button_frame, text="Apply Edit", command=lambda: self.apply_edit(text_field_references, edit_window)) #Apply edit, destroy window afterward
+        button_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        cancel_button.pack(side=tk.LEFT, padx=10, pady=10)
+        submit_button.pack(side=tk.RIGHT, padx=10, pady=10)
+
+    def apply_edit(self, text_fields, window) :
+        """get the new attributes from the given entry field references, apply the edit"""
+
+        #create list to hold the text to be used for constructing query
+        new_attributes = []
+
+        #loop through text references to get the input text
+        for field in text_fields :
+            new_attributes.append(field.get())
+
+        #call database function to edit the entry with these new attributes
+        self.db.update_book(new_attributes, self.sel_book_id)
+
+        #after applying the update, destroy the window
+        window.destroy()
+
+        # update the list display to reflect new edited book
+        self.clear_treeview()
+        self.load_books(self.db.get_all_books("id"))
+
+
+    def tree_right_click(self, event):
+        """grab info of hovered book, display options to interact with it"""
+
+        #if the click occurred on top of a book item in the tree, get the tree item id
+        tree_item_id = self.tree.identify_row(event.y)
+
+        #if we are not selecting a book item, there is no action to take
+        if not tree_item_id :
+            return
+
+        #visually select the item we are supposed to be hovering over
+        self.tree.selection_set(tree_item_id)
+
+        #get the id of the book entity we are hovering over
+        self.sel_book_id = self.tree.item(tree_item_id, "values")[0]
+
+        #display the pop-up menu to delete or edit the book item
+        self.tree_menu.post(event.x_root, event.y_root)
+        self.tree_menu.grab_release()
+
 
     def apply_filters(self, selectedStatus):
         """apply filters helper function"""
@@ -222,7 +333,8 @@ class BookHuntGUI:
         # Prevent duplicate rows when reloading
         self.clear_treeview()
         # Update info label
-        self.info_label.config(text=f"Your Book Collection ({len(books)} books)")
+        num_books = self.db.get_book_count()
+        self.info_label.config(text=f"Your Book Collection ({num_books} books)")
         
         # Insert books into table
         for idx, book in enumerate(books):
@@ -235,6 +347,7 @@ class BookHuntGUI:
             status = book['status'].replace('-', ' ').title()
             
             values = (
+                book['id'],
                 book['title'],
                 book['author'],
                 book['genre'] or "N/A",
