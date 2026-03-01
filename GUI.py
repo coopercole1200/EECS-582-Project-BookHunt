@@ -149,6 +149,9 @@ class BookHuntGUI:
         # Bind right click event to the tree to access edit (and eventually delete) book functionality
         self.tree.bind("<Button-3>", self.tree_right_click)
 
+        # Tracks where books are mapped in the GUI table. Key=row index, Value=book
+        self.book_mapping = {}
+
     def create_book(self) :
         """create book helper function
 
@@ -330,8 +333,12 @@ class BookHuntGUI:
         num_books = self.db.get_book_count()
         self.info_label.config(text=f"Your Book Collection ({num_books} books)")
         
+        # Reset the book mapping
+        self.book_mapping = {}
+
         # Insert books into table
         for idx, book in enumerate(books):
+            self.book_mapping[idx] = book
             tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
             
             # Format rating

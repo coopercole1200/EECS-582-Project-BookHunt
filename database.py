@@ -10,7 +10,7 @@ Last Modified by: Ebraheem AlAamer
 # Import Libraries and Tools
 import sqlite3
 from typing import List, Dict, Optional
-
+global_id_counter = 3 # Please increment if you add more samples at the bottom. Terrible solution ik, but it works for now :P - Carson
 class DatabaseBackend:
     def __init__(self, db_path: str = "books.db"):
         # Initialize database connection and create tables
@@ -19,6 +19,10 @@ class DatabaseBackend:
         self.connection.row_factory = sqlite3.Row
         self.cursor = self.connection.cursor()
         self._create_tables()
+        
+        # Initializes ID_counter based on what's already in the database
+        self.ID_counter = global_id_counter
+        print(f"Initialized id counter to: {self.ID_counter}")
 
     def _create_tables(self):
         # Create initial tables
@@ -138,19 +142,19 @@ if __name__ == "__main__":
         print("Adding sample books...")
         # Add some sample books directly for testing
         db.cursor.execute('''
-            INSERT INTO books (title, author, genre, year, rating, status)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', ("1984", "George Orwell", "Dystopian Fiction", 1949, 4.5, "completed"))
+            INSERT INTO books (id, title, author, genre, year, rating, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (1, "1984", "George Orwell", "Dystopian Fiction", 1949, 4.5, "completed"))
         
         db.cursor.execute('''
-            INSERT INTO books (title, author, genre, year, rating, status)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', ("To Kill a Mockingbird", "Harper Lee", "Classic Fiction", 1960, 5.0, "completed"))
+            INSERT INTO books (id, title, author, genre, year, rating, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (2, "To Kill a Mockingbird", "Harper Lee", "Classic Fiction", 1960, 5.0, "completed"))
         
         db.cursor.execute('''
-            INSERT INTO books (title, author, genre, year, rating, status)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', ("The Great Gatsby", "F. Scott Fitzgerald", "Classic Fiction", 1925, 4.0, "to-read"))
+            INSERT INTO books (id, title, author, genre, year, rating, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (3, "The Great Gatsby", "F. Scott Fitzgerald", "Classic Fiction", 1925, 4.0, "to-read"))
         
         db.connection.commit()
         print("Sample books added!")
