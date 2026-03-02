@@ -36,6 +36,7 @@ class DatabaseBackend:
                 genre TEXT,
                 year INTEGER,
                 rating REAL CHECK(rating >=0 AND rating <=5),
+                review_content TEXT DEFAULT NULL,
                 status TEXT DEFAULT 'to-read'
             )
         ''')
@@ -91,6 +92,16 @@ class DatabaseBackend:
         query = f'UPDATE books SET title = ?, author = ?, genre = ?, year = ?, status = ? WHERE id = ?'
         self.cursor.execute(query, (new_attributes[0], new_attributes[1], new_attributes[2], int(new_attributes[3]), new_attributes[4].lower(), book_id))
         self.connection.commit()
+    
+    def update_review(self, book_id, new):
+        query = f"UPDATE books SET review_content = '{new}' WHERE id = {book_id}"
+        self.cursor.execute(query)
+        self.connection.commit()
+
+    def delete_review(self, book_id):
+        query = f"UPDATE books SET review_content = NULL WHERE id = {book_id}"
+        self.cursor.execute(query)
+        self.connection.commit()
 
     def get_book_count(self) :
         self.cursor.execute('SELECT COUNT(*) FROM books')
@@ -138,7 +149,7 @@ if __name__ == "__main__":
     # Check if database is empty
     books = db.get_all_books()
 
-    """if len(books) == 0:
+    if len(books) == 0:
         print("Adding sample books...")
         # Add some sample books directly for testing
         db.cursor.execute('''
@@ -147,9 +158,9 @@ if __name__ == "__main__":
         ''', (1, "1984", "George Orwell", "Dystopian Fiction", 1949, 4.5, "completed"))
         
         db.cursor.execute('''
-            INSERT INTO books (id, title, author, genre, year, rating, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (2, "To Kill a Mockingbird", "Harper Lee", "Classic Fiction", 1960, 5.0, "completed"))
+            INSERT INTO books (id, title, author, genre, year, rating, review_content, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (2, "To Kill a Mockingbird", "Harper Lee", "Classic Fiction", 1960, 5.0, "the book was good", "completed"))
         
         db.cursor.execute('''
             INSERT INTO books (id, title, author, genre, year, rating, status)
@@ -159,7 +170,7 @@ if __name__ == "__main__":
         db.connection.commit()
         print("Sample books added!")
     else:
-        print(f"Database already has {len(books)} books")"""
+        print(f"Database already has {len(books)} books")
     
     # Display all books
     books = db.get_all_books()
