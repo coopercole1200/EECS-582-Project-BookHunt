@@ -55,6 +55,16 @@ class BookHuntGUI:
         self.review_content.pack()
 
 
+        # adds/edits to reviews made through this Entry
+        self.review_entry = tk.Entry(self.review_frame)
+        update_review_button = tk.Button(self.review_frame, text="Add/Update Review", command=lambda: self.update_review())
+        delete_review_button = tk.Button(self.review_frame, text="Delete Review", command=lambda: self.delete_review())
+
+        update_review_button.pack(side=tk.LEFT)
+        self.review_entry.pack(side=tk.LEFT)
+        delete_review_button.pack(side=tk.LEFT, padx=(20, 0))
+
+
 
         # Right click menu for tree view
         self.tree_menu = tk.Menu(self.root, tearoff=0)
@@ -162,6 +172,7 @@ class BookHuntGUI:
 
         # the mainloop will run self.on_tree_select() when an item is selected in the TreeView
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
+
         # Bind right click event to the tree to access edit (and eventually delete) book functionality
         self.tree.bind("<Button-3>", self.tree_right_click)
 
@@ -235,6 +246,48 @@ class BookHuntGUI:
         self.db.delete_book(self.sel_book_id)
         self.clear_treeview()
         self.load_books(self.db.get_all_books())
+
+    def update_review(self):
+        new = self.review_entry.get()
+
+        # for now it just will take the first book selected, im not sure how selecting
+        # a lot of books will affect the UI yet
+        selected = self.tree.selection()[0]
+
+        # there may be a case where all books are unselected? im not sure and i dont
+        # really care to test it right now
+        if not selected:
+            return
+
+        self.sel_book_id = self.tree.item(selected, "values")[0]
+        self.db.update_review(self.sel_book_id, new)
+
+        book_review = self.db.get_specific_book(self.sel_book_id)[6]
+
+        if not book_review:
+            book_review = "No review yet."
+
+        self.review_content.config(text=book_review)
+
+    def delete_review(self):
+        # for now it just will take the first book selected, im not sure how selecting
+        # a lot of books will affect the UI yet
+        selected = self.tree.selection()[0]
+
+        # there may be a case where all books are unselected? im not sure and i dont
+        # really care to test it right now
+        if not selected:
+            return
+
+        self.sel_book_id = self.tree.item(selected, "values")[0]
+        self.db.delete_review(self.sel_book_id)
+
+        book_review = self.db.get_specific_book(self.sel_book_id)[6]
+
+        if not book_review:
+            book_review = "No review yet."
+
+        self.review_content.config(text=book_review)
 
     def edit_book_toplevel(self):
         """use old attributes to get book item, display window for new attributes, make change"""
