@@ -36,6 +36,7 @@ class DatabaseBackend:
                 genre TEXT,
                 year INTEGER,
                 rating REAL CHECK(rating >=0 AND rating <=5),
+                review_content TEXT DEFAULT '',
                 status TEXT DEFAULT 'to-read'
             )
         ''')
@@ -61,9 +62,9 @@ class DatabaseBackend:
         if title is None and author is None and genre is None and year is None and rating is None and status == "to-read":
             #TODO: CHANGE TO ACTUALLY ACCEPT USER DEFINED INFO
             self.cursor.execute('''
-                        INSERT INTO books (title, author, genre, year, rating, status)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', ("The Analects", "Confucius's Disciples", "Philosophy", -221 , 4, "currently reading"))
+                        INSERT INTO books (title, author, genre, year, rating, review_content, status)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ''', ("The Analects", "Confucius's Disciples", "Philosophy", -221 , 4, "", "currently reading"))
             self.connection.commit()
             return
 
@@ -76,9 +77,9 @@ class DatabaseBackend:
         genre_db = genre if genre != "" else None
 
         self.cursor.execute('''
-                    INSERT INTO books (title, author, genre, year, rating, status)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ''', (title, author, genre_db, year, rating, status))
+                    INSERT INTO books (title, author, genre, year, rating, review_content, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (title, author, genre_db, year, rating, "", status))
         self.connection.commit()
 
     def delete_book(self, book_id) :
@@ -88,7 +89,7 @@ class DatabaseBackend:
 
     def update_book(self, new_attributes, book_id):
         """update book attributes of specific entity given by book_id"""
-        query = f'UPDATE books SET title = ?, author = ?, genre = ?, year = ?, status = ? WHERE id = ?'
+        query = f'UPDATE books SET title = ?, author = ?, genre = ?, year = ?, review_content = ?, status = ? WHERE id = ?'
         self.cursor.execute(query, (new_attributes[0], new_attributes[1], new_attributes[2], int(new_attributes[3]), new_attributes[4].lower(), book_id))
         self.connection.commit()
 
@@ -142,19 +143,19 @@ if __name__ == "__main__":
         print("Adding sample books...")
         # Add some sample books directly for testing
         db.cursor.execute('''
-            INSERT INTO books (id, title, author, genre, year, rating, status)
+            INSERT INTO books (id, title, author, genre, year, rating, review_content, status)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (1, "1984", "George Orwell", "Dystopian Fiction", 1949, 4.5, "completed"))
+        ''', (1, "1984", "George Orwell", "Dystopian Fiction", 1949, 4.5, "", "completed"))
         
         db.cursor.execute('''
-            INSERT INTO books (id, title, author, genre, year, rating, status)
+            INSERT INTO books (id, title, author, genre, year, rating, review_content, status)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (2, "To Kill a Mockingbird", "Harper Lee", "Classic Fiction", 1960, 5.0, "completed"))
+        ''', (2, "To Kill a Mockingbird", "Harper Lee", "Classic Fiction", 1960, 5.0, "", "completed"))
         
         db.cursor.execute('''
-            INSERT INTO books (id, title, author, genre, year, rating, status)
+            INSERT INTO books (id, title, author, genre, year, rating, review_content, status)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (3, "The Great Gatsby", "F. Scott Fitzgerald", "Classic Fiction", 1925, 4.0, "to-read"))
+        ''', (3, "The Great Gatsby", "F. Scott Fitzgerald", "Classic Fiction", 1925, 4.0, "", "to-read"))
         
         db.connection.commit()
         print("Sample books added!")
