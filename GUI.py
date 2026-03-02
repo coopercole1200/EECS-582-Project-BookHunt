@@ -326,8 +326,6 @@ class BookHuntGUI:
             return
 
         self.sel_book_id = self.tree.item(selected, "values")[0]
-
-        print(self.db.get_specific_book(self.sel_book_id)[5])
         book_review = self.db.get_specific_book(self.sel_book_id)[6]
 
         if not book_review:
