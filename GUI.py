@@ -64,8 +64,6 @@ class BookHuntGUI:
         self.review_entry.pack(side=tk.LEFT)
         delete_review_button.pack(side=tk.LEFT, padx=(20, 0))
 
-
-
         # Right click menu for tree view
         self.tree_menu = tk.Menu(self.root, tearoff=0)
         self.tree_menu.add_command(label="Delete Book", command=self.delete_book)
@@ -175,9 +173,6 @@ class BookHuntGUI:
 
         # Bind right click event to the tree to access edit (and eventually delete) book functionality
         self.tree.bind("<Button-3>", self.tree_right_click)
-
-        # Tracks where books are mapped in the GUI table. Key=row index, Value=book
-        self.book_mapping = {}
 
     def create_book(self) :
         """create book helper function
@@ -441,7 +436,6 @@ class BookHuntGUI:
                 book['genre'] or "N/A",
                 book['year'] or "N/A",
                 rating_str,
-                "",
                 status
             )
             
