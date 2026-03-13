@@ -3,8 +3,8 @@ Artifact: database.py
 Description: Uses SQLite to handle database operations
 Authors: Cole Cooper
 Date Created: 2/14/2026
-Date Last Modified: 2/28/2026
-Last Modified by: Ebraheem AlAamer
+Date Last Modified: 3/13/2026
+Last Modified by: Cole Cooper
 """
 
 # Import Libraries and Tools
@@ -33,6 +33,23 @@ class DatabaseBackend:
                 rating REAL CHECK(rating >=0 AND rating <=5),
                 review_content TEXT DEFAULT NULL,
                 status TEXT DEFAULT 'to-read'
+            )
+        ''')
+        # Tags table
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS tags (
+                id INTEGER PRIMARY KEY,
+                label TEXT NOT NULL UNIQUE
+            )
+        ''')
+        # Junction table: links books to tags
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS book_tags (
+                book_id INTEGER NOT NULL,
+                tag_id INTEGER NOT NULL,
+                PRIMARY KEY (book_id, tag_id),
+                FOREIGN KEY (book_id) REFERENCES books(id),
+                FOREIGN KEY (tag_id) REFERENCES tags(id)
             )
         ''')
         self.connection.commit()
@@ -129,6 +146,99 @@ class DatabaseBackend:
         rows = self.cursor.fetchall()
         # Makes a list out of all returned books
         return [dict(row) for row in rows]
+    
+    # Genre helper function
+    def get_distinct_genres(self) -> List[str]:
+        #Return a sorted list of every genre in the DB
+        self.cursor.execute(
+            "SELECT DISTINCT genre FROM books WHERE genre IS NOT NULL ORDER BY genre"
+        )
+        return [row[0] for row in self.cursor.fetchall()]
+    
+    # Tag helper function
+    def get_all_tags(self) -> List[Dict]:
+        #Return all tags as a list
+        self.cursor.execute("SELECT id, label FROM tags ORDER BY label")
+        return [dict(row) for row in self.cursor.fetchall()]
+ 
+    def create_tag(self, label: str) -> int:
+        #Insert a new tag and return its id
+        label = label.strip()
+        self.cursor.execute(
+            "INSERT OR IGNORE INTO tags (label) VALUES (?)", (label,)
+        )
+        self.connection.commit()
+        self.cursor.execute("SELECT id FROM tags WHERE label = ?", (label,))
+        return self.cursor.fetchone()[0]
+ 
+    def add_tag_to_book(self, book_id: int, tag_label: str):
+        #Add a tag to a book
+        tag_id = self.create_tag(tag_label)
+        self.cursor.execute(
+            "INSERT OR IGNORE INTO book_tags (book_id, tag_id) VALUES (?, ?)",
+            (book_id, tag_id),
+        )
+        self.connection.commit()
+ 
+    def remove_tag_from_book(self, book_id: int, tag_id: int):
+        #REmove a tag from a book
+        self.cursor.execute(
+            "DELETE FROM book_tags WHERE book_id = ? AND tag_id = ?",
+            (book_id, tag_id),
+        )
+        self.connection.commit()
+ 
+    def get_tags_for_book(self, book_id: int) -> List[Dict]:
+        #Return all tags attached to specified book
+        self.cursor.execute(
+            """SELECT t.id, t.label FROM tags t
+               JOIN book_tags bt ON t.id = bt.tag_id
+               WHERE bt.book_id = ?
+               ORDER BY t.label""",
+            (book_id,),
+        )
+        return [dict(row) for row in self.cursor.fetchall()]
+    
+    # Combined filter
+    def get_filtered_books(
+        self,
+        status: Optional[str] = None,
+        genre: Optional[str] = None,
+        tag_ids: Optional[List[int]] = None,
+        sort_by: str = "id",
+    ) -> List[Dict]:
+        #Return books matching ALL supplied filters.
+        conditions: List[str] = []
+        params: List = []
+ 
+        # Status filter
+        if status and status not in ("All", "Filter by status"):
+            status_map = {
+                "To Read": "to-read",
+                "Completed": "completed",
+                "Currently Reading": "currently reading",
+            }
+            db_status = status_map.get(status, status.lower())
+            conditions.append("b.status = ?")
+            params.append(db_status)
+ 
+        # Genre filter
+        if genre and genre not in ("All Genres", "Filter by genre"):
+            conditions.append("b.genre = ?")
+            params.append(genre)
+ 
+        # Tag filter: book must have ALL selected tags
+        if tag_ids:
+            for tid in tag_ids:
+                conditions.append(
+                    "EXISTS (SELECT 1 FROM book_tags bt WHERE bt.book_id = b.id AND bt.tag_id = ?)"
+                )
+                params.append(tid)
+ 
+        where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+        query = f"SELECT b.* FROM books b {where_clause} ORDER BY b.{sort_by}"
+        self.cursor.execute(query, params)
+        return [dict(row) for row in self.cursor.fetchall()]
     
     def close(self):
         # Closes database connection
