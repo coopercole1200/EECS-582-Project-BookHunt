@@ -154,6 +154,25 @@ class BookHuntGUI:
         clear_filter_button = tk.Button(filter_frame, text="Clear Filters", command=self.clear_filters)
         clear_filter_button.pack(side=tk.LEFT, pady=8)
 
+        # Sorting options frame
+        sorting_frame = tk.Frame(self.root, bg="gray90")
+        sorting_frame.pack(fill=tk.X, ipady=4)
+        tk.Label(sorting_frame, text="Sort by:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2), pady=8)
+        self.sorting_dropdown = ttk.Combobox(sorting_frame, values=["id", "title", "author", "genre", "year", "status"], width=18, state="readonly")
+        self.sorting_dropdown.set("id")
+        self.sorting_dropdown.pack(side=tk.LEFT, padx=(0, 16), pady=8)
+
+        sorting_button = tk.Button(sorting_frame, text="Apply Sorting", command=self.apply_sorting)
+        sorting_button.pack(side=tk.LEFT, padx=(0, 6), pady=8)
+
+        # Search area
+        searching_frame = tk.Frame(self.root, bg="gray90")
+        searching_frame.pack(fill=tk.X, ipady=4)
+        self.search_field = tk.Entry(searching_frame)
+        self.search_field.pack(anchor="w", fill=tk.X, ipadx=100)
+        search_button = tk.Button(searching_frame, text="Search for Title", command=self.search_book)
+        search_button.pack(side=tk.LEFT, padx=(0, 6), pady=8)
+
         # Main content area
         content_frame = tk.Frame(self.root, bg="gray90")
         content_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
@@ -278,13 +297,13 @@ class BookHuntGUI:
 
         self.refresh_genre_dropdown()
         self.refresh_tag_dropdown()
-        self.load_books(self.db.get_all_books())
+        self.load_books(self.db.get_all_books(self.sorting_dropdown.get()))
 
     def delete_book(self) :
         """delete book helper function"""
         self.db.delete_book(self.sel_book_id)
         self.clear_treeview()
-        self.load_books(self.db.get_all_books())
+        self.load_books(self.db.get_all_books(self.sorting_dropdown.get()))
 
     def update_review(self):
         new = self.review_entry.get()
@@ -405,7 +424,7 @@ class BookHuntGUI:
 
         #update the list display to reflect new edited book
         self.clear_treeview()
-        self.load_books(self.db.get_all_books("id"))
+        self.load_books(self.db.get_all_books(self.sorting_dropdown.get()))
 
     def on_tree_select(self, event):
         # for now it just will take the first book selected, im not sure how selecting
@@ -464,7 +483,17 @@ class BookHuntGUI:
         self.status_dropdown.set("All")
         self.genre_dropdown.set("All Genres")
         self.tag_dropdown.set("All Tags")
-        self.load_books(self.db.get_all_books("id"))
+        self.load_books(self.db.get_all_books(self.sorting_dropdown.get()))
+
+    def apply_sorting(self) :
+        """apply the sorting to the table"""
+        sorting = self.sorting_dropdown.get()
+        self.load_books((self.db.get_all_books(sorting)))
+
+    def search_book(self):
+        book_title = self.search_field.get()
+        self.load_books(self.db.get_books_by_name(book_title, self.sorting_dropdown.get()))
+
 
     def refresh_genre_dropdown(self):
         # Repopulate genre dropdown and tag listbox from the current DB state

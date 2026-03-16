@@ -146,6 +146,14 @@ class DatabaseBackend:
         rows = self.cursor.fetchall()
         # Makes a list out of all returned books
         return [dict(row) for row in rows]
+
+    def get_books_by_name(self, title, sort_by):
+        if not (title == "") :
+            self.cursor.execute(f'SELECT * FROM books WHERE title = \'{title}\' ORDER BY {sort_by}')
+        else :
+            self.cursor.execute(f'SELECT * FROM books ORDER BY {sort_by}')
+        rows = self.cursor.fetchall()
+        return [dict(row) for row in rows]
     
     # Genre helper function
     def get_distinct_genres(self) -> List[str]:
