@@ -248,10 +248,18 @@ class BookHuntGUI:
 
         book_review = self.db.get_specific_book(self.sel_book_id)[6]
 
-        if not book_review:
+        if not self.book_reviews:
             book_review = "No review yet."
+        else:
+            book_review = self.book_reviews[0]["review_content"]
 
         self.review_content.config(text=book_review)
+
+    def delete_book(self) :
+        """delete book helper function"""
+        self.db.delete_book(self.sel_book_id)
+        self.clear_treeview()
+        self.load_books(self.db.get_all_books())
 
     def delete_review(self):
         # for now it just will take the first book selected, im not sure how selecting
@@ -368,7 +376,7 @@ class BookHuntGUI:
         else:
             book_review = self.book_reviews[0]["review_content"]
 
-        self.current_review_viewed = self.book_reviews[0]["id"]
+        self.current_review_viewed = self.book_reviews[int(self.sel_book_id)]["id"]
 
         self.review_content.config(text=book_review)
 
