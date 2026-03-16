@@ -64,12 +64,20 @@ class BookHuntGUI:
 
 
         # adds/edits to reviews made through this Entry
+        selectedStarValue = tk.IntVar(value=0)
+
         self.review_entry = tk.Entry(self.review_frame)
-        update_review_button = tk.Button(self.review_frame, text="Add/Update Review", command=lambda: self.update_review())
+        self.review_stars = tk.Frame(self.review_frame)
+        update_review_button = tk.Button(self.review_frame, text="Add/Update Review", command=lambda: self.update_review(selectedStarValue))
         delete_review_button = tk.Button(self.review_frame, text="Delete Review", command=lambda: self.delete_review())
 
-        update_review_button.pack(side=tk.LEFT)
+        update_review_button.pack(side=tk.LEFT, padx=(0, 20))
         self.review_entry.pack(side=tk.LEFT)
+        self.review_stars.pack(side=tk.LEFT, padx=(5, 0))
+        starButtons = [("0", 0), ("1", 1), ("2", 2), ("3", 3), ("4", 4), ("5", 5)]
+        for i, (text, val) in enumerate(starButtons):
+            tk.Radiobutton(self.review_stars, text=text, variable=selectedStarValue, value=val).grid(row=0, column=i, padx=5)
+
         delete_review_button.pack(side=tk.LEFT, padx=(20, 0))
 
         # Right click menu for tree view
@@ -305,9 +313,10 @@ class BookHuntGUI:
         self.clear_treeview()
         self.load_books(self.db.get_all_books(self.sorting_dropdown.get()))
 
-    def update_review(self):
+    def update_review(self, rating):
         new = self.review_entry.get()
-
+        updatedRating = str(rating.get())
+        
         # for now it just will take the first book selected, im not sure how selecting
         # a lot of books will affect the UI yet
         selected = self.tree.selection()[0]
@@ -319,7 +328,7 @@ class BookHuntGUI:
 
         self.sel_book_id = self.tree.item(selected, "values")[0]
         self.db.update_review(self.sel_book_id, new)
-
+        self.db.update_book([updatedRating], self.sel_book_id, True) # This works, you just have to refresh the tree view to see updated rating
         book_review = self.db.get_specific_book(self.sel_book_id)[6]
 
         if not book_review:
@@ -417,7 +426,7 @@ class BookHuntGUI:
             new_attributes.append(field.get())
 
         #call database function to edit the entry with these new attributes
-        self.db.update_book(new_attributes, self.sel_book_id)
+        self.db.update_book(new_attributes, self.sel_book_id, False)
 
         #after applying the update, destroy the window
         window.destroy()

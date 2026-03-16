@@ -99,10 +99,14 @@ class DatabaseBackend:
         self.cursor.execute('DELETE FROM books WHERE id = ?', (book_id,))
         self.connection.commit()
 
-    def update_book(self, new_attributes, book_id):
+    def update_book(self, new_attributes, book_id, isRatingBeingUpdated):
         """update book attributes of specific entity given by book_id"""
-        query = f'UPDATE books SET title = ?, author = ?, genre = ?, year = ?, status = ? WHERE id = ?'
-        self.cursor.execute(query, (new_attributes[0], new_attributes[1], new_attributes[2], int(new_attributes[3]), new_attributes[4].lower(), book_id))
+        if not isRatingBeingUpdated:
+            query = f'UPDATE books SET title = ?, author = ?, genre = ?, year = ?, status = ? WHERE id = ?'
+            self.cursor.execute(query, (new_attributes[0], new_attributes[1], new_attributes[2], int(new_attributes[3]), new_attributes[4].lower(), book_id))
+        else:
+            query = f'UPDATE books SET rating = ? WHERE id = ?'
+            self.cursor.execute(query, (new_attributes[0], book_id))
         self.connection.commit()
     
     def update_review(self, book_id, new):
