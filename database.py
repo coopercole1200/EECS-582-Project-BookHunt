@@ -1,10 +1,10 @@
 """
 Artifact: database.py
 Description: Uses SQLite to handle database operations
-Authors: Cole Cooper
+Authors: Cole Cooper, Beckett Malinowski
 Date Created: 2/14/2026
-Date Last Modified: 2/28/2026
-Last Modified by: Ebraheem AlAamer
+Date Last Modified: 3/15/2026
+Last Modified by: Beckett Malinowski
 """
 
 # Import Libraries and Tools
@@ -45,7 +45,7 @@ class DatabaseBackend:
                 last_updated TEXT,
                 FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
             )
-        ''') # date is TODO
+        ''')
         self.connection.commit()
         # Debug message
         print("Database initialized successfully")
@@ -109,13 +109,14 @@ class DatabaseBackend:
         """, (book_id, review, today, today))
         self.connection.commit()
     
-    def update_review(self, book_id, new_review):
+    def update_review(self, id, new_review):
         """update an existing review on a book"""
         today = date.today().isoformat()
 
         self.cursor.execute("""
-            UPDATE books SET review = ?, last_updated = ?
-        """, (new_review, today))
+            UPDATE reviews SET review_content = ?, last_updated = ? WHERE id = ?
+        """, (new_review, today, id))
+        self.connection.commit()
 
         # self.cursor.execute("""
         # """, ())

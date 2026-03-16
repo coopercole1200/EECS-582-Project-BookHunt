@@ -60,11 +60,15 @@ class BookHuntGUI:
         create_review_button = tk.Button(self.review_frame, text="Add Review", command=lambda: self.create_review())
         update_review_button = tk.Button(self.review_frame, text="Update Review", command=lambda: self.update_review())
         delete_review_button = tk.Button(self.review_frame, text="Delete Review", command=lambda: self.delete_review())
+        next_review_button = tk.Button(self.review_frame, text="Next", command=lambda: self.next_review())
+        previous_review_button = tk.Button(self.review_frame, text="Previous", command=lambda: self.previous_review())
 
         create_review_button.pack(side=tk.LEFT)
         update_review_button.pack(side=tk.LEFT, padx=(20, 0))
         self.review_entry.pack(side=tk.LEFT, padx=(10, 0))
         delete_review_button.pack(side=tk.LEFT, padx=(20, 0))
+        previous_review_button.pack(side=tk.LEFT, padx=(20, 0))
+        next_review_button.pack(side=tk.LEFT, padx=(0, 0))
 
         # Right click menu for tree view
         self.tree_menu = tk.Menu(self.root, tearoff=0)
@@ -246,8 +250,6 @@ class BookHuntGUI:
         self.sel_book_id = self.tree.item(selected, "values")[0]
         self.db.update_review(self.sel_book_id, f"{id} {new}")
 
-        book_review = self.db.get_specific_book(self.sel_book_id)[6]
-
         if not self.book_reviews:
             book_review = "No review yet."
         else:
@@ -257,29 +259,19 @@ class BookHuntGUI:
 
     def delete_book(self) :
         """delete book helper function"""
-        self.db.delete_book(self.sel_book_id)
+        self.db.delete_book(int(self.sel_book_id))
         self.clear_treeview()
         self.load_books(self.db.get_all_books())
 
     def delete_review(self):
-        # for now it just will take the first book selected, im not sure how selecting
-        # a lot of books will affect the UI yet
         selected = self.tree.selection()[0]
-
-        # there may be a case where all books are unselected? im not sure and i dont
-        # really care to test it right now
         if not selected:
             return
 
-        self.sel_book_id = self.tree.item(selected, "values")[0]
-        self.db.delete_review(self.sel_book_id)
-
-        book_review = self.db.get_specific_book(self.sel_book_id)[6]
-
-        if not book_review:
-            book_review = "No review yet."
-
-        self.review_content.config(text=book_review)
+        print(self.book_reviews)
+        print(self.current_review_id)
+        self.db.delete_review(str(self.current_review_id))
+        self.review_content.config(text="review deleted!")
 
     def edit_book_toplevel(self):
         """use old attributes to get book item, display window for new attributes, make change"""
@@ -369,15 +361,36 @@ class BookHuntGUI:
 
         self.sel_book_id = self.tree.item(selected, "values")[0]
         self.book_reviews = self.db.get_reviews(self.sel_book_id)
-        print(self.book_reviews)
-
         if not self.book_reviews:
-            book_review = "No review yet."
-        else:
-            book_review = self.book_reviews[0]["review_content"]
+            self.review_content.config(text="No reviews yet.")
+            return
 
-        self.current_review_viewed = self.book_reviews[int(self.sel_book_id)]["id"]
+        self.current_review_index = 0
+        self.current_review_id = self.book_reviews[self.current_review_index]["id"]
 
+        book_review = self.book_reviews[self.current_review_id]["review_content"]
+        self.review_content.config(text=book_review)
+
+    def next_review(self):
+        """on Next review button click"""
+        if self.current_review_index + 1 >= len(self.book_reviews):
+            return
+
+        self.current_review_index += 1
+        self.current_review_id = self.book_reviews[self.current_review_index]["id"]
+
+        book_review = self.book_reviews[self.current_review_id]["review_content"]
+        self.review_content.config(text=book_review)
+
+    def previous_review(self):
+        """on Previous review button click"""
+        if self.current_review_index - 1 < 0:
+            return
+        
+        self.current_review_index -= 1
+        self.current_review_id = self.book_reviews[self.current_review_index]["id"]
+
+        book_review = self.book_reviews[self.current_review_id]["review_content"]
         self.review_content.config(text=book_review)
 
 
