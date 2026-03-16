@@ -22,9 +22,17 @@ class BookHuntGUI:
         
         # Initialize database
         self.db = DatabaseBackend()
+
+        #Initializes tags for filtering
+        self._tag_id_map = {}
+        self._pending_tags = []
         
         # Set up the GUI
         self.setup_ui()
+
+        # Populate filter dropdown from Database
+        self.refresh_genre_dropdown()
+        self.refresh_tag_dropdown()
         
         # Load example books
         self.load_books(self.db.get_all_books())
@@ -58,17 +66,46 @@ class BookHuntGUI:
         
         # Add filter by status drop down
         dropdown_options = ["All", "Completed", "To Read", "Currently Reading"]
-        status_frame = tk.Frame(self.root, bg="gray90")
-        status_frame.pack(fill=tk.X, ipady=20)
-        status_dropdown = ttk.Combobox(status_frame, values=dropdown_options)
-        status_dropdown.set("Filter by status")
-        status_dropdown.pack(side=tk.RIGHT, padx=10, pady=10)
+        self.status_dropdown = ttk.Combobox(filter_frame, values=dropdown_options, width=16, state="readonly")
+        self.status_dropdown.set("All")
+        self.status_dropdown.pack(side=tk.LEFT, padx=(0,16), pady=8)
 
-        # Add apply filter button field
-        apply_filter_frame = tk.Frame(self.root, bg="gray90")
-        apply_filter_frame.pack(fill=tk.X, ipady=1)
-        apply_filter_button = tk.Button(apply_filter_frame, text="Apply Filter(s)", command=lambda: self.apply_filters(status_dropdown.get()))
-        apply_filter_button.pack(side=tk.RIGHT, padx=10, pady=10)
+        # Genre Filter
+        tk.Label(filter_frame, text="Genre:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2), pady=8)
+        self.genre_dropdown = ttk.Combobox(filter_frame, values=["All Genres"], width=18, state="readonly")
+        self.genre_dropdown.set("All Genres")
+        self.genre_dropdown.pack(side=tk.LEFT, padx=(0, 16), pady=8)
+
+        # Tag Filter
+        tk.Label(filter_frame, text="Tag:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2), pady=8)
+        self.tag_dropdown = ttk.Combobox(filter_frame, values=["All Tags"], width=18, state="readonly")
+        self.tag_dropdown.set("All Tags")
+        self.tag_dropdown.pack(side=tk.LEFT, padx=(0, 16), pady=8)
+ 
+        # -- Apply / Clear buttons --
+        apply_filter_button = tk.Button(filter_frame, text="Apply Filter(s)", command=self.apply_filters)
+        apply_filter_button.pack(side=tk.LEFT, padx=(0, 6), pady=8)
+        clear_filter_button = tk.Button(filter_frame, text="Clear Filters", command=self.clear_filters)
+        clear_filter_button.pack(side=tk.LEFT, pady=8)
+
+        # Sorting options frame
+        sorting_frame = tk.Frame(self.root, bg="gray90")
+        sorting_frame.pack(fill=tk.X, ipady=4)
+        tk.Label(sorting_frame, text="Sort by:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2), pady=8)
+        self.sorting_dropdown = ttk.Combobox(sorting_frame, values=["id", "title", "author", "genre", "year", "status"], width=18, state="readonly")
+        self.sorting_dropdown.set("id")
+        self.sorting_dropdown.pack(side=tk.LEFT, padx=(0, 16), pady=8)
+
+        sorting_button = tk.Button(sorting_frame, text="Apply Sorting", command=self.apply_sorting)
+        sorting_button.pack(side=tk.LEFT, padx=(0, 6), pady=8)
+
+        # Search area
+        searching_frame = tk.Frame(self.root, bg="gray90")
+        searching_frame.pack(fill=tk.X, ipady=4)
+        self.search_field = tk.Entry(searching_frame)
+        self.search_field.pack(anchor="w", fill=tk.X, ipadx=100)
+        search_button = tk.Button(searching_frame, text="Search for Title", command=self.search_book)
+        search_button.pack(side=tk.LEFT, padx=(0, 6), pady=8)
 
 
         # Nearby bookstores section
@@ -158,10 +195,58 @@ class BookHuntGUI:
 
         self.info_label.config(text=f"Opening nearby bookstores for: {location}")
 
-    def apply_filters(self, selectedStatus):
-        """apply filters helper function"""
-        self.clear_treeview()
-        self.load_books(self.db.get_books_by_status(selectedStatus))
+    def apply_filters(self):
+        #Collect status, genre, and tag selections then reload the book list
+        status = self.status_dropdown.get()
+        genre = self.genre_dropdown.get()
+        tag = self.tag_dropdown.get()
+        # Convert single selected tag label to a tag_id list
+        tag_ids = []
+        if tag and tag != "All Tags":
+            all_tags = self.db.get_all_tags()
+            tag_ids = [t["id"] for t in all_tags if t["label"] == tag]
+        self.load_books(self.db.get_filtered_books(status=status, genre=genre, tag_ids=tag_ids))
+
+    def clear_filters(self):
+        # Reset all filter controls and reload all books
+        self.status_dropdown.set("All")
+        self.genre_dropdown.set("All Genres")
+        self.tag_dropdown.set("All Tags")
+        self.load_books(self.db.get_all_books(self.sorting_dropdown.get()))
+
+    def apply_sorting(self) :
+        """apply the sorting to the table"""
+        sorting = self.sorting_dropdown.get()
+        self.load_books((self.db.get_all_books(sorting)))
+
+    def search_book(self):
+        book_title = self.search_field.get()
+        self.load_books(self.db.get_books_by_name(book_title, self.sorting_dropdown.get()))
+
+
+    def refresh_genre_dropdown(self):
+        # Repopulate genre dropdown and tag listbox from the current DB state
+        genres = ["All Genres"] + self.db.get_distinct_genres()
+        self.genre_dropdown["values"] = genres
+        if self.genre_dropdown.get() not in genres:
+            self.genre_dropdown.set("All Genres")
+
+    def refresh_tag_dropdown(self):
+        """Repopulate tag dropdown from DB."""
+        tags = ["All Tags"] + [t["label"] for t in self.db.get_all_tags()]
+        self.tag_dropdown["values"] = tags
+        if self.tag_dropdown.get() not in tags:
+            self.tag_dropdown.set("All Tags")
+ 
+    def _add_pending_tag(self):
+        """Stage a tag for the book currently being created."""
+        label = self.pending_tag_entry.get().strip()
+        if not label or label in self._pending_tags:
+            self.pending_tag_entry.delete(0, tk.END)
+            return
+        self._pending_tags.append(label)
+        self.pending_tag_entry.delete(0, tk.END)
+        self.pending_tags_label.config(text="Tags: " + ", ".join(self._pending_tags), fg="black")
 
     def load_books(self, books):
         # Update info label
