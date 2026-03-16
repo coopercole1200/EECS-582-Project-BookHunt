@@ -10,6 +10,7 @@ Last Modified by: Ebraheem AlAamer
 # Import Libraries and Tools
 import sqlite3
 from typing import List, Dict, Optional
+from datetime import date
 class DatabaseBackend:
     def __init__(self, db_path: str = "books.db"):
         # Initialize database connection and create tables
@@ -35,6 +36,16 @@ class DatabaseBackend:
                 status TEXT DEFAULT 'to-read'
             )
         ''')
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS reviews (
+                id INTEGER PRIMARY KEY,
+                book_id INTEGER,
+                review_content TEXT DEFAULT NULL,
+                date TEXT,
+                last_updated TEXT,
+                FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+            )
+        ''') # date is TODO
         self.connection.commit()
         # Debug message
         print("Database initialized successfully")
@@ -77,7 +88,7 @@ class DatabaseBackend:
                 ''', (title, author, genre_db, year, rating, status))
         self.connection.commit()
 
-    def delete_book(self, book_id) :
+    def delete_book(self, book_id):
         """called on delete book button press, delete specific entry"""
         self.cursor.execute('DELETE FROM books WHERE id = ?', (book_id,))
         self.connection.commit()
@@ -87,16 +98,43 @@ class DatabaseBackend:
         query = f'UPDATE books SET title = ?, author = ?, genre = ?, year = ?, status = ? WHERE id = ?'
         self.cursor.execute(query, (new_attributes[0], new_attributes[1], new_attributes[2], int(new_attributes[3]), new_attributes[4].lower(), book_id))
         self.connection.commit()
+
+    def create_review(self, book_id: int, review: str):
+        """create a new review on a book"""
+        today = date.today().isoformat() # the day the create_review() method is run, in format YYYY-MM-DD
+
+        self.cursor.execute("""
+            INSERT INTO reviews (book_id, review_content, date, last_updated)
+            VALUES (?, ?, ?, ?)
+        """, (book_id, review, today, today))
+        self.connection.commit()
     
-    def update_review(self, book_id, new):
-        query = f"UPDATE books SET review_content = '{new}' WHERE id = {book_id}"
-        self.cursor.execute(query)
+    def update_review(self, book_id, new_review):
+        """update an existing review on a book"""
+        today = date.today().isoformat()
+
+        self.cursor.execute("""
+            UPDATE books SET review = ?, last_updated = ?
+        """, (new_review, today))
+
+        # self.cursor.execute("""
+        # """, ())
+        # query = f"UPDATE books SET review_content = '{new}' WHERE id = {book_id}"
+        # self.cursor.execute(query)
+        # self.connection.commit()
+
+    def delete_review(self, id):
+        """delete an existing review on a book"""
+        self.cursor.execute('DELETE FROM reviews WHERE id = ?', (id))
         self.connection.commit()
 
-    def delete_review(self, book_id):
-        query = f"UPDATE books SET review_content = NULL WHERE id = {book_id}"
-        self.cursor.execute(query)
-        self.connection.commit()
+    def get_reviews(self, book_id):
+        """get all reviews of a certain book"""
+        self.cursor.execute("""SELECT * FROM reviews WHERE book_id = ?
+        """, book_id)
+        rows = self.cursor.fetchall()
+
+        return [dict(row) for row in rows]
 
     def get_book_count(self) :
         self.cursor.execute('SELECT COUNT(*) FROM books')
@@ -144,7 +182,7 @@ if __name__ == "__main__":
     # Check if database is empty
     books = db.get_all_books()
 
-    """if len(books) == 0:
+    if len(books) == 0:
         print("Adding sample books...")
         # Add some sample books directly for testing
         db.cursor.execute('''
@@ -165,7 +203,7 @@ if __name__ == "__main__":
         db.connection.commit()
         print("Sample books added!")
     else:
-        print(f"Database already has {len(books)} books")"""
+        print(f"Database already has {len(books)} books")
     
     # Display all books
     books = db.get_all_books()

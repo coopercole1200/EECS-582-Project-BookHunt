@@ -57,11 +57,13 @@ class BookHuntGUI:
 
         # adds/edits to reviews made through this Entry
         self.review_entry = tk.Entry(self.review_frame)
-        update_review_button = tk.Button(self.review_frame, text="Add/Update Review", command=lambda: self.update_review())
+        create_review_button = tk.Button(self.review_frame, text="Add Review", command=lambda: self.create_review())
+        update_review_button = tk.Button(self.review_frame, text="Update Review", command=lambda: self.update_review())
         delete_review_button = tk.Button(self.review_frame, text="Delete Review", command=lambda: self.delete_review())
 
-        update_review_button.pack(side=tk.LEFT)
-        self.review_entry.pack(side=tk.LEFT)
+        create_review_button.pack(side=tk.LEFT)
+        update_review_button.pack(side=tk.LEFT, padx=(20, 0))
+        self.review_entry.pack(side=tk.LEFT, padx=(10, 0))
         delete_review_button.pack(side=tk.LEFT, padx=(20, 0))
 
         # Right click menu for tree view
@@ -170,7 +172,6 @@ class BookHuntGUI:
 
         # the mainloop will run self.on_tree_select() when an item is selected in the TreeView
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
-
         # Bind right click event to the tree to access edit (and eventually delete) book functionality
         self.tree.bind("<Button-3>", self.tree_right_click)
 
@@ -219,28 +220,16 @@ class BookHuntGUI:
         if status == "":
             status = "to-read"
 
-        # Create in DB using user-provided values
-        self.db.create_book(title, author, genre, year, rating, status)
+    def create_review(self):
+        """user creates a new review"""
+        new_review = self.review_entry.get() # our Entry widget
 
-        # Clear inputs after successful insert
-        self.title_entry.delete(0, tk.END)
-        self.author_entry.delete(0, tk.END)
-        if hasattr(self, "genre_entry"):
-            self.genre_entry.delete(0, tk.END)
-        if hasattr(self, "year_entry"):
-            self.year_entry.delete(0, tk.END)
-        if hasattr(self, "rating_entry"):
-            self.rating_entry.delete(0, tk.END)
-        if hasattr(self, "create_status_dropdown"):
-            self.create_status_dropdown.set("to-read")
-
-        self.load_books(self.db.get_all_books())
-
-    def delete_book(self) :
-        """delete book helper function"""
-        self.db.delete_book(self.sel_book_id)
-        self.clear_treeview()
-        self.load_books(self.db.get_all_books())
+        selected = self.tree.selection()[0]
+        if not selected:
+            return
+    
+        self.sel_book_id = int(self.tree.item(selected, "values")[0])
+        self.db.create_review(self.sel_book_id, new_review)
 
     def update_review(self):
         new = self.review_entry.get()
@@ -255,7 +244,7 @@ class BookHuntGUI:
             return
 
         self.sel_book_id = self.tree.item(selected, "values")[0]
-        self.db.update_review(self.sel_book_id, new)
+        self.db.update_review(self.sel_book_id, f"{id} {new}")
 
         book_review = self.db.get_specific_book(self.sel_book_id)[6]
 
@@ -363,21 +352,23 @@ class BookHuntGUI:
         self.clear_treeview()
         self.load_books(self.db.get_all_books("id"))
 
-    def on_tree_select(self, event):
-        # for now it just will take the first book selected, im not sure how selecting
-        # a lot of books will affect the UI yet
+    def on_tree_select(self, _event):
+        # get the first book in the highlighted list of selected tree items
         selected = self.tree.selection()[0]
 
-        # there may be a case where all books are unselected? im not sure and i dont
-        # really care to test it right now
         if not selected:
             return
 
         self.sel_book_id = self.tree.item(selected, "values")[0]
-        book_review = self.db.get_specific_book(self.sel_book_id)[6]
+        self.book_reviews = self.db.get_reviews(self.sel_book_id)
+        print(self.book_reviews)
 
-        if not book_review:
+        if not self.book_reviews:
             book_review = "No review yet."
+        else:
+            book_review = self.book_reviews[0]["review_content"]
+
+        self.current_review_viewed = self.book_reviews[0]["id"]
 
         self.review_content.config(text=book_review)
 
