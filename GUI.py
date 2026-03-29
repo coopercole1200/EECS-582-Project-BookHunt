@@ -10,13 +10,14 @@ Last Modified by: Cole Cooper
 import tkinter as tk
 from tkinter import ttk
 from database import DatabaseBackend
-
+import webbrowser
+from urllib.parse import quote
 
 class BookHuntGUI:    
     def __init__(self, root):
         self.root = root
         self.root.title("BookHunt")
-        self.root.geometry("900x600")
+        self.root.geometry("900x900")
         
         # Initialize database
         self.db = DatabaseBackend()
@@ -180,6 +181,21 @@ class BookHuntGUI:
         self.search_field.pack(anchor="w", fill=tk.X, ipadx=100)
         search_button = tk.Button(searching_frame, text="Search for Title", command=self.search_book)
         search_button.pack(side=tk.LEFT, padx=(0, 6), pady=8)
+
+        # Nearby bookstores section
+        maps_frame = tk.Frame(self.root, bg="gray90")
+        maps_frame.pack(fill=tk.X, ipady=10)
+
+        tk.Label(maps_frame, text="Location:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2))
+        self.location_entry = tk.Entry(maps_frame, width=30)
+        self.location_entry.pack(side=tk.LEFT, padx=(0, 10))
+
+        find_bookstores_button = tk.Button(
+            maps_frame,
+            text="Find Nearby Bookstores",
+            command=self.find_nearby_bookstores
+        )
+        find_bookstores_button.pack(side=tk.LEFT, padx=10, pady=5)
 
         # Main content area
         content_frame = tk.Frame(self.root, bg="gray90")
@@ -569,6 +585,19 @@ class BookHuntGUI:
     def clear_treeview(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
+
+    def find_nearby_bookstores(self):
+        """Open Google Maps and search for nearby bookstores based on the entered location."""
+        location = self.location_entry.get().strip() if hasattr(self, "location_entry") else ""
+
+        if location == "":
+            self.info_label.config(text="Please enter a location to find nearby bookstores.")
+            return
+
+        query = quote(f"bookstores near {location}")
+        url = f"https://www.google.com/maps/search/{query}"
+        webbrowser.open(url)
+        self.info_label.config(text=f"Opening nearby bookstores for: {location}")
     
 
 def main():
