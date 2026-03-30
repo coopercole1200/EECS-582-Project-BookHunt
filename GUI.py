@@ -17,7 +17,7 @@ class BookHuntGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("BookHunt")
-        self.root.geometry("900x900")
+        self.root.geometry("900x800")
         
         # Initialize database
         self.db = DatabaseBackend()
@@ -32,6 +32,9 @@ class BookHuntGUI:
         # Populate filter dropdown from Database
         self.refresh_genre_dropdown()
         self.refresh_tag_dropdown()
+
+        # Boolean to track user allowing recommendation agent to access the book entries
+        self.agent_optin = False
         
         # Load example books
         self.load_books(self.db.get_all_books("id"))
@@ -88,9 +91,9 @@ class BookHuntGUI:
 
         # Add create book button field
         creation_frame = tk.Frame(self.root, bg="gray90")
-        creation_frame.pack(fill=tk.X, ipady=20)
+        creation_frame.pack(fill=tk.X, ipady=5)
         create_book_button = tk.Button(creation_frame, text="Create a Book Entry", command=self.create_book)
-        create_book_button.pack(side=tk.LEFT, padx=10, pady=10)
+        create_book_button.pack(side=tk.LEFT, padx=10, pady=5)
 
         # --- Book attribute input fields (used by Create a Book Entry) ---
         tk.Label(creation_frame, text="Title:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2))
@@ -122,6 +125,12 @@ class BookHuntGUI:
         )
         self.create_status_dropdown.set("to-read")
         self.create_status_dropdown.pack(side=tk.LEFT, padx=(0, 10))
+
+        # Ask for agent recommendation button
+        agent_access_frame = tk.Frame(self.root, bg="gray90")
+        agent_access_frame.pack(fill=tk.X, ipady=5)
+        agent_access_button = tk.Button(agent_access_frame, text="Get a Book Recommendation?", command=self.recommendation_agent_toplevel)
+        agent_access_button.pack(side=tk.LEFT, padx=10, pady=5)
 
         # Tag entry row
         tag_entry_frame = tk.Frame(self.root, bg="gray90")
@@ -598,7 +607,77 @@ class BookHuntGUI:
         url = f"https://www.google.com/maps/search/{query}"
         webbrowser.open(url)
         self.info_label.config(text=f"Opening nearby bookstores for: {location}")
+
+    def recommendation_agent_toplevel(self) :
+        """Open the window for interacting with the recommendation agent, interactions done by helpers called in this function"""
+
+        #create the pop-up window, force focus onto it, and prevent user from interacting with main window while pop-up is up
+        agent_window = tk.Toplevel(self.root)
+        agent_window.title("Book Recommendation Agent")
+        agent_window.geometry("600x600")
+        agent_window.attributes('-topmost', True)
+        agent_window.focus_force()
+        agent_window.grab_set()
+
+        #TO DO: CHECK FOR USER OPT-IN TO ALLOWING AGENT TO LOOK AT DATABASE
+        #Not really necessary if we use our own agent, but if we just do an api, then their books read data will go to them
+        #Consider this a goodwill communication
+
+        #Select type of recommendation
+        tk.Label(agent_window, text="What would you like your recommendation based off of?").pack(side="top")
+        type_frame = tk.Frame(agent_window)
+        type_frame.pack(fill=tk.X)
+        type_selection = tk.IntVar(value=5)
+        typeButtons = [("Book(s)", 0), ("Genre(s)", 1), ("Tag(s)", 2)]
+        for i, (text, val) in enumerate(typeButtons):
+            tk.Radiobutton(type_frame, text=text, variable=type_selection, value=val).grid(row=i, column=0, sticky="W")
+        button_frame = tk.Frame(agent_window)
+        button_frame.pack(fill=tk.X)
+        get_recommendation_button = tk.Button(button_frame, text="Next", command = lambda : self.specify_recommendation(type_selection, dynamic_frame))
+        get_recommendation_button.pack()
+
+        #after selecting type of recommendation, further specification between "all" or "specific entry" appears in this frame
+        #this will be done in the specify_recommendation function
+        dynamic_frame = tk.Frame(agent_window)
+        dynamic_frame.pack()
+
+        #This is where the recommendation agent text will appear
+        agent_frame = tk.Frame(agent_window, height=100, bg="SlateBlue3")
+        agent_frame.pack(ipady=100, fill=tk.X, side="bottom")
+        tk.Label(agent_frame, text="Recommendation Agent:", bg="SlateBlue3").pack(side="top")
+
+    def specify_recommendation(self, type_selection, frame) :
+        """Based on selected option, get info from database, and then pass to agent"""
+
+        #Do nothing if no selection made
+        num = type_selection.get()
+        if num > 2 or num < 0 :
+            return
+
+        #Placeholder
+        test_window = tk.Toplevel(self.root)
+        test_window.title("test success")
+        test_window.geometry("600x600")
+        test_window.attributes('-topmost', True)
+        test_window.focus_force()
+        test_window.grab_set()
+
+        #Database query based off what was selected
+        #Get recommendation from specific book
+        """if num == 0 :
+            # create frame, drop down, and button to select book from database
+        
+            return
     
+        if num == 1 :
+            # create frame, drop down and button to select genre from database
+    
+            return
+        
+        if num == 2 :
+            # create frame, drop down and button to select tag from database
+        
+            return"""
 
 def main():
     root = tk.Tk()
