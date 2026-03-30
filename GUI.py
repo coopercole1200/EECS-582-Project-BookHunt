@@ -8,10 +8,12 @@ Last Modified by: Cole Cooper
 """
 
 import tkinter as tk
-from tkinter import ttk
-from database import DatabaseBackend
 import webbrowser
+from tkinter import ttk
 from urllib.parse import quote
+
+from database import DatabaseBackend
+
 
 class BookHuntGUI:    
     def __init__(self, root):
@@ -257,6 +259,9 @@ class BookHuntGUI:
         # the mainloop will run self.on_tree_select() when an item is selected in the TreeView
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
 
+        # bind double-left-click to the TreeView to show book's reviews
+        self.tree.bind("<Double-1>", self.display_review_window)
+
         # Bind right click event to the tree to access edit (and eventually delete) book functionality
         self.tree.bind("<Button-3>", self.tree_right_click)
 
@@ -439,6 +444,48 @@ class BookHuntGUI:
         button_frame.pack(side=tk.BOTTOM, fill=tk.X)
         cancel_button.pack(side=tk.LEFT, padx=10, pady=10)
         submit_button.pack(side=tk.RIGHT, padx=10, pady=10)
+
+    def display_review_window(self, event):
+        """create pop-up window to view book's review entries"""
+        item_id = self.tree.identify_row(event.y)
+        if not item_id:
+            return
+
+        # setup data from treeview for use in code below
+        # this will have to be updated if any fields are added/updated/removed
+        book_data = self.tree.item(item_id, "values")
+        book_id, title, author, genre, date_published, rating, is_completed = book_data
+        print(book_data)
+
+        #create the pop-up window, force focus onto it, and prevent user from interacting with main window while pop-up is up
+        review_window = tk.Toplevel(self.root)
+        review_window.title(f"{title} Reviews")
+        review_window.geometry("500x450")
+        review_window.attributes('-topmost', True)
+        review_window.focus_set()
+        review_window.grab_set()
+
+        # create the header frame where the title of the book will go
+        header_frame = tk.Frame(review_window, bg="SlateBlue3", height=120)
+        label_text = f"{title}, {author}"
+        tk.Label(header_frame, text=label_text, font=("Arial", 20, "bold")).pack(side=tk.TOP)
+        header_frame.pack(fill=tk.X)
+
+        # create the frame where the review entries will show up
+        entry_frame = tk.Frame(review_window, bg="gray90", height=80)
+        entry_frame.pack(fill=tk.X)
+        
+        # create a label giving user interaction instructions
+
+        # reviews: dict = self.db.get_reviews(book_id)
+        # for every review, we will pack a new label
+        # review_content = ""
+        # tk.Label(entry_frame, text=review_content, font=("Arial", 12, "bold")).pack(side=tk.TOP)
+
+        # for now:
+        review_content = self.db.get_specific_book(book_id)[6]
+        print(review_content)
+        tk.Label(entry_frame, text=f"review 1: {review_content}", font=("Arial", 12, "bold")).pack(side=tk.TOP)
 
     def apply_edit(self, text_fields, window) :
         """get the new attributes from the given entry field references, apply the edit"""
