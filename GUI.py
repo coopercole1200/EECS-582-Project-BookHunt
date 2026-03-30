@@ -269,9 +269,19 @@ class BookHuntGUI:
             return
 
         print(self.book_reviews)
-        print(self.current_review_id)
+        print(str(self.current_review_id))
         self.db.delete_review(str(self.current_review_id))
         self.review_content.config(text="review deleted!")
+
+
+    def show_review(self):
+        if not self.book_reviews:
+            self.review_content.config(text="No reviews yet.")
+            return
+
+        book_review = self.book_reviews[self.current_review_index]["review_content"]
+        self.review_content.config(text=book_review)
+
 
     def edit_book_toplevel(self):
         """use old attributes to get book item, display window for new attributes, make change"""
@@ -367,8 +377,9 @@ class BookHuntGUI:
 
         self.current_review_index = 0
         self.current_review_id = self.book_reviews[self.current_review_index]["id"]
+        self.show_review()
 
-        book_review = self.book_reviews[self.current_review_id]["review_content"]
+        book_review = self.book_reviews[self.current_review_index]["review_content"]
         self.review_content.config(text=book_review)
 
     def next_review(self):
@@ -379,7 +390,7 @@ class BookHuntGUI:
         self.current_review_index += 1
         self.current_review_id = self.book_reviews[self.current_review_index]["id"]
 
-        book_review = self.book_reviews[self.current_review_id]["review_content"]
+        book_review = self.book_reviews[self.current_review_index]["review_content"]
         self.review_content.config(text=book_review)
 
     def previous_review(self):
@@ -390,7 +401,7 @@ class BookHuntGUI:
         self.current_review_index -= 1
         self.current_review_id = self.book_reviews[self.current_review_index]["id"]
 
-        book_review = self.book_reviews[self.current_review_id]["review_content"]
+        book_review = self.book_reviews[self.current_review_index]["review_content"]
         self.review_content.config(text=book_review)
 
 
