@@ -655,6 +655,13 @@ class BookHuntGUI:
         webbrowser.open(url)
         self.info_label.config(text=f"Opening nearby bookstores for: {location}")
 
+    def toggle_agent(self, btn):
+        # Toggles between the button being unclickable or not based on checkbox
+        if (self.check_var.get()):
+            btn['state'] = 'normal'
+        else:
+            btn['state'] = 'disabled'
+            
     def recommendation_agent_toplevel(self) :
         """Open the window for interacting with the recommendation agent, interactions done by helpers called in this function"""
 
@@ -666,10 +673,6 @@ class BookHuntGUI:
         agent_window.focus_force()
         agent_window.grab_set()
 
-        #TO DO: CHECK FOR USER OPT-IN TO ALLOWING AGENT TO LOOK AT DATABASE
-        #Not really necessary if we use our own agent, but if we just do an api, then their books read data will go to them
-        #Consider this a goodwill communication
-
         #Select type of recommendation
         tk.Label(agent_window, text="What would you like your recommendation based off of?").pack(side="top")
         type_frame = tk.Frame(agent_window)
@@ -680,8 +683,15 @@ class BookHuntGUI:
             tk.Radiobutton(type_frame, text=text, variable=type_selection, value=val).grid(row=i, column=0, sticky="W")
         button_frame = tk.Frame(agent_window)
         button_frame.pack(fill=tk.X)
+        opt_in_frame = tk.Frame(agent_window)
+        opt_in_frame.pack(fill=tk.X)
         get_recommendation_button = tk.Button(button_frame, text="Next", command = lambda : self.specify_recommendation(type_selection, dynamic_frame))
+        get_recommendation_button['state'] = 'disabled'
         get_recommendation_button.pack()
+        self.check_var = tk.BooleanVar()
+        self.check_var.set(0)
+        opt_in_button = tk.Checkbutton(opt_in_frame, text="Opt-in to sharing your stored book data with an AI Agent?", variable=self.check_var, command=lambda: self.toggle_agent(get_recommendation_button))
+        opt_in_button.pack()
 
         #after selecting type of recommendation, further specification between "all" or "specific entry" appears in this frame
         #this will be done in the specify_recommendation function
