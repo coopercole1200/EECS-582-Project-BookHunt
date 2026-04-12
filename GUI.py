@@ -266,17 +266,7 @@ class BookHuntGUI:
         self.tree.bind("<Button-3>", self.tree_right_click)
 
     def create_book(self) :
-        """create book helper function
-
-        Uses the text entry fields next to the Create button (title/author/etc.) as parameters
-        to the database INSERT. If the fields don't exist for any reason, it falls back to
-        the original behavior (hardcoded example insert).
-        """
-        # Backwards-compatible fallback
-        if not hasattr(self, "title_entry") or not hasattr(self, "author_entry"):
-            self.db.create_book()
-            self.load_books(self.db.get_all_books())
-            return
+        """create book helper function using the text entry fields next to the Create button as parameters to the INSERT query"""
 
         title = self.title_entry.get().strip()
         author = self.author_entry.get().strip()
@@ -601,18 +591,14 @@ class BookHuntGUI:
         self.pending_tags_label.config(text="Tags: " + ", ".join(self._pending_tags), fg="black")
 
     def load_books(self, books):
-        # Prevent duplicate rows when reloading
+        # Prevent duplicating rows when reloading
         self.clear_treeview()
         # Update info label
         num_books = self.db.get_book_count()
         self.info_label.config(text=f"Your Book Collection ({num_books} books)")
-        
-        # Reset the book mapping
-        self.book_mapping = {}
 
         # Insert books into table
         for idx, book in enumerate(books):
-            self.book_mapping[idx] = book
             tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
             
             # Format rating
@@ -681,11 +667,24 @@ class BookHuntGUI:
         typeButtons = [("Book(s)", 0), ("Genre(s)", 1), ("Tag(s)", 2)]
         for i, (text, val) in enumerate(typeButtons):
             tk.Radiobutton(type_frame, text=text, variable=type_selection, value=val).grid(row=i, column=0, sticky="W")
+
+        #Frame for the button to enter initial selection of recommendation type
         button_frame = tk.Frame(agent_window)
         button_frame.pack(fill=tk.X)
+
+        #Frame for opting in to AI agent interaction
         opt_in_frame = tk.Frame(agent_window)
         opt_in_frame.pack(fill=tk.X)
-        get_recommendation_button = tk.Button(button_frame, text="Next", command = lambda : self.specify_recommendation(type_selection, dynamic_frame))
+
+        #After selecting type of recommendation, further specification between "all" or "specific entry" appears in this frame
+        #this will be done in the specify_recommendation function
+        label_frame = tk.Frame(agent_window)
+        label_frame.pack(fill=tk.X)
+        dynamic_frame = tk.Frame(agent_window)
+        dynamic_frame.pack(fill=tk.X)
+
+        #Button for moving to second stage of recommendation specification
+        get_recommendation_button = tk.Button(button_frame, text="Next", command = lambda : self.specify_recommendation(type_selection, dynamic_frame, label_frame))
         get_recommendation_button['state'] = 'disabled'
         get_recommendation_button.pack()
         self.check_var = tk.BooleanVar()
@@ -693,17 +692,12 @@ class BookHuntGUI:
         opt_in_button = tk.Checkbutton(opt_in_frame, text="Opt-in to sharing your stored book data with an AI Agent?", variable=self.check_var, command=lambda: self.toggle_agent(get_recommendation_button))
         opt_in_button.pack()
 
-        #after selecting type of recommendation, further specification between "all" or "specific entry" appears in this frame
-        #this will be done in the specify_recommendation function
-        dynamic_frame = tk.Frame(agent_window)
-        dynamic_frame.pack()
-
         #This is where the recommendation agent text will appear
-        agent_frame = tk.Frame(agent_window, height=100, bg="SlateBlue3")
-        agent_frame.pack(ipady=100, fill=tk.X, side="bottom")
+        agent_frame = tk.Frame(agent_window, height=120, bg="SlateBlue3")
+        agent_frame.pack(ipady=120, fill=tk.X, side="bottom")
         tk.Label(agent_frame, text="Recommendation Agent:", bg="SlateBlue3").pack(side="top")
 
-    def specify_recommendation(self, type_selection, frame) :
+    def specify_recommendation(self, type_selection, frame, label_frame) :
         """Based on selected option, get info from database, and then pass to agent"""
 
         #Do nothing if no selection made
@@ -711,30 +705,111 @@ class BookHuntGUI:
         if num > 2 or num < 0 :
             return
 
-        #Placeholder
-        test_window = tk.Toplevel(self.root)
-        test_window.title("test success")
-        test_window.geometry("600x600")
-        test_window.attributes('-topmost', True)
-        test_window.focus_force()
-        test_window.grab_set()
+        #Clear frames so that the user can change recommendation types
+        for widget in label_frame.winfo_children():
+            widget.destroy()
+        for widget in frame.winfo_children():
+            widget.destroy()
 
-        #Database query based off what was selected
-        #Get recommendation from specific book
-        """if num == 0 :
-            # create frame, drop down, and button to select book from database
-        
+        #Create a tree inside the dynamic_frame
+        scrollbar = ttk.Scrollbar(frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        #Get recommendation from specific book(s)
+        if num == 0 :
+            # create tree and button to select book(s) from database
+            tk.Label(label_frame, text="Select Books", font=("Arial", 14, "bold"), bg="gray90", width=500).pack()
+            columns = ("ID #", "Title", "Author")
+            tree = ttk.Treeview(frame, columns=columns, show="headings", yscrollcommand=scrollbar.set)
+            tree.column("ID #", width=20)
+            tree.column("Title", width=380)
+            tree.column("Author", width=150)
+            # Configure headings
+            for col in columns:
+                tree.heading(col, text=col)
+            tree.pack(fill=tk.BOTH, expand=True)
+
+            # Alternate the row colors
+            self.tree.tag_configure('oddrow', background='white')
+            self.tree.tag_configure('evenrow', background='gray95')
+            scrollbar.config(command=self.tree.yview)
+
+            books = self.db.get_all_books()
+
+            # Insert books into table
+            for idx, book in enumerate(books):
+
+                tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
+
+                values = (book['id'], book['title'], book['author'],)
+
+                tree.insert("", tk.END, values=values, tags=(tag,))
             return
-    
+
+        # Get recommendation from specific genre(s)
         if num == 1 :
-            # create frame, drop down and button to select genre from database
-    
+            # create tree and button to select genre(s) from database
+            tk.Label(label_frame, text="Select Genres", font=("Arial", 14, "bold"), bg="gray90", width=500).pack()
+            columns = ("Genre","# of Books w/ Genre", "Avg. Rating")
+            tree = ttk.Treeview(frame, columns=columns, show="headings", yscrollcommand=scrollbar.set)
+            tree.column("Genre", width=350)
+            tree.column("# of Books w/ Genre", width=125)
+            tree.column("Avg. Rating", width=75)
+            # Configure headings
+            for col in columns:
+                tree.heading(col, text=col)
+            tree.pack(fill=tk.BOTH, expand=True)
+
+            # Alternate the row colors
+            self.tree.tag_configure('oddrow', background='white')
+            self.tree.tag_configure('evenrow', background='gray95')
+            scrollbar.config(command=self.tree.yview)
+
+            genres = self.db.get_genres_with_stats()
+            # Insert genres and stats into table
+            for idx, genre in enumerate(genres):
+                if genre['genre'] is None :
+                    continue
+
+                tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
+
+                values = (genre['genre'], genre['count'], genre['avg'],)
+
+                tree.insert("", tk.END, values=values, tags=(tag,))
+
             return
-        
+
+        # Get recommendation from specific tag(s)
         if num == 2 :
-            # create frame, drop down and button to select tag from database
-        
-            return"""
+            # create tree and button to select tag(s) from database
+            tk.Label(label_frame, text="Select Tags", font=("Arial", 14, "bold"), bg="gray90", width=500).pack(fill=tk.X)
+            columns = ("Tag","# of Books w/ Tag", "Avg. Rating")
+            tree = ttk.Treeview(frame, columns=columns, show="headings", yscrollcommand=scrollbar.set)
+            tree.column("Tag", width=350)
+            tree.column("# of Books w/ Tag", width=125)
+            tree.column("Avg. Rating", width=75)
+            # Configure headings
+            for col in columns:
+                tree.heading(col, text=col)
+            tree.pack(fill=tk.BOTH, expand=True)
+
+            # Alternate the row colors
+            self.tree.tag_configure('oddrow', background='white')
+            self.tree.tag_configure('evenrow', background='gray95')
+            scrollbar.config(command=self.tree.yview)
+
+            tags = self.db.get_tags_with_stats()
+            # Insert books into table
+            for idx, tag_i in enumerate(tags):
+                if tag_i['tag'] is None:
+                    continue
+
+                tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
+
+                values = (tag_i['tag'], tag_i['count'], tag_i['avg'],)
+
+                tree.insert("", tk.END, values=values, tags=(tag,))
+            return
 
 def main():
     root = tk.Tk()

@@ -19,6 +19,7 @@ class DatabaseBackend:
         self.cursor = self.connection.cursor()
         self._create_tables()
 
+###################################################################################TABLE CREATION FUNCTION##################################################################
     def _create_tables(self):
         # Create initial tables
         # Basic book info, we can change/add features later
@@ -56,30 +57,10 @@ class DatabaseBackend:
         # Debug message
         print("Database initialized successfully")
 
-    def get_specific_book(self, book_id):
-        """get book entry based on book id"""
-        self.cursor.execute(f'SELECT * FROM books WHERE id = {book_id}')
-        book = self.cursor.fetchone()
-        return book
-
-    #create a book item in the book table
+###############################################################################BOOK RELATED FUNCTIONS#######################################################################
+    # Create a book item in the book table
     def create_book(self, title=None, author=None, genre=None, year=None, rating=None, status="to-read") :
-        """called on create book button press, create an entry in the book table with specified info
-
-        Backwards-compatible:
-        - If no user-defined info is provided, inserts the original hardcoded example row.
-        - If fields are provided, uses them as parameters for the INSERT query.
-        """
-        # If nothing provided, keep the original example insert so existing behavior doesn't break.
-        if title is None and author is None and genre is None and year is None and rating is None and status == "to-read":
-            #TODO: CHANGE TO ACTUALLY ACCEPT USER DEFINED INFO
-            self.cursor.execute('''
-                        INSERT INTO books (title, author, genre, year, rating, status)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', ("The Analects", "Confucius's Disciples", "Philosophy", -221 , 4, "currently reading"))
-            self.connection.commit()
-            return
-
+        """called on create book button press, create an entry in the book table with specified info"""
         # Normalize/clean values for DB insert
         title = (title or "").strip()
         author = (author or "").strip()
@@ -94,11 +75,13 @@ class DatabaseBackend:
                 ''', (title, author, genre_db, year, rating, status))
         self.connection.commit()
 
+    # Delete a book item in the table
     def delete_book(self, book_id) :
         """called on delete book button press, delete specific entry"""
         self.cursor.execute('DELETE FROM books WHERE id = ?', (book_id,))
         self.connection.commit()
 
+    # Update a book item in the table
     def update_book(self, new_attributes, book_id, isRatingBeingUpdated):
         """update book attributes of specific entity given by book_id"""
         if not isRatingBeingUpdated:
@@ -108,33 +91,31 @@ class DatabaseBackend:
             query = f'UPDATE books SET rating = ? WHERE id = ?'
             self.cursor.execute(query, (new_attributes[0], book_id))
         self.connection.commit()
-    
-    def update_review(self, book_id, new):
-        query = f"UPDATE books SET review_content = '{new}' WHERE id = {book_id}"
-        self.cursor.execute(query)
-        self.connection.commit()
 
-    def delete_review(self, book_id):
-        query = f"UPDATE books SET review_content = NULL WHERE id = {book_id}"
-        self.cursor.execute(query)
-        self.connection.commit()
-
+    # Count the number of entries in the book table
     def get_book_count(self) :
         self.cursor.execute('SELECT COUNT(*) FROM books')
         count = self.cursor.fetchall()[0][0]
         return count
 
-    # Returns a list of dictionaries that is all books
-    def get_all_books(self, sort_by='id') -> List[Dict]:
-        # Get all info about all books and order by id
-        self.cursor.execute(f'SELECT * FROM books ORDER BY {sort_by}')
-        # Stores all data from SQL query into rows
+    # Get all info of a specific, single book entry from the table
+    def get_specific_book(self, book_id):
+        """get book entry based on book id"""
+        self.cursor.execute(f'SELECT * FROM books WHERE id = {book_id}')
+        book = self.cursor.fetchone()
+        return book
+
+    # Get all info of book entries with a specific, exact book name
+    def get_books_by_name(self, title, sort_by):
+        if not (title == "") :
+            self.cursor.execute(f'SELECT * FROM books WHERE title = \'{title}\' ORDER BY {sort_by}')
+        else :
+            self.cursor.execute(f'SELECT * FROM books ORDER BY {sort_by}')
         rows = self.cursor.fetchall()
-        # Makes a list out of all returned books
         return [dict(row) for row in rows]
 
     # Returns a list of dictionaries that is all books based on a certain status
-    def get_books_by_status(self, status) -> List[Dict]:
+    """def get_books_by_status(self, status) -> List[Dict]:
         if (status == "All"):
             self.cursor.execute('SELECT * FROM books ORDER BY id')
         else:
@@ -145,20 +126,63 @@ class DatabaseBackend:
                 formattedStatus = status.lower()
             # Get all info about all books based on a certain status and order by id
             self.cursor.execute('SELECT * FROM books WHERE status = ? ORDER BY id', (formattedStatus,))
-        
+
+        # Stores all data from SQL query into rows
+        rows = self.cursor.fetchall()
+        # Makes a list out of all returned books
+        return [dict(row) for row in rows]"""
+
+    # Get book entries based on a specific, custom filter
+    def get_filtered_books(
+            self,
+            status: Optional[str] = None,
+            genre: Optional[str] = None,
+            tag_ids: Optional[List[int]] = None,
+            sort_by: str = "id",
+    ) -> List[Dict]:
+        # Return books matching ALL supplied filters.
+        conditions: List[str] = []
+        params: List = []
+
+        # Status filter
+        if status and status not in ("All", "Filter by status"):
+            status_map = {
+                "To Read": "to-read",
+                "Completed": "completed",
+                "Currently Reading": "currently reading",
+            }
+            db_status = status_map.get(status, status.lower())
+            conditions.append("b.status = ?")
+            params.append(db_status)
+
+        # Genre filter
+        if genre and genre not in ("All Genres", "Filter by genre"):
+            conditions.append("b.genre = ?")
+            params.append(genre)
+
+        # Tag filter: book must have ALL selected tags
+        if tag_ids:
+            for tid in tag_ids:
+                conditions.append(
+                    "EXISTS (SELECT 1 FROM book_tags bt WHERE bt.book_id = b.id AND bt.tag_id = ?)"
+                )
+                params.append(tid)
+
+        where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+        query = f"SELECT b.* FROM books b {where_clause} ORDER BY b.{sort_by}"
+        self.cursor.execute(query, params)
+        return [dict(row) for row in self.cursor.fetchall()]
+
+    # Returns a list of dictionaries that is all books
+    def get_all_books(self, sort_by='id') -> List[Dict]:
+        # Get all info about all books and order by id
+        self.cursor.execute(f'SELECT * FROM books ORDER BY {sort_by}')
         # Stores all data from SQL query into rows
         rows = self.cursor.fetchall()
         # Makes a list out of all returned books
         return [dict(row) for row in rows]
 
-    def get_books_by_name(self, title, sort_by):
-        if not (title == "") :
-            self.cursor.execute(f'SELECT * FROM books WHERE title = \'{title}\' ORDER BY {sort_by}')
-        else :
-            self.cursor.execute(f'SELECT * FROM books ORDER BY {sort_by}')
-        rows = self.cursor.fetchall()
-        return [dict(row) for row in rows]
-    
+###############################################################################GENRE RELATED FUNCTIONS######################################################################
     # Genre helper function
     def get_distinct_genres(self) -> List[str]:
         #Return a sorted list of every genre in the DB
@@ -166,13 +190,26 @@ class DatabaseBackend:
             "SELECT DISTINCT genre FROM books WHERE genre IS NOT NULL ORDER BY genre"
         )
         return [row[0] for row in self.cursor.fetchall()]
-    
-    # Tag helper function
-    def get_all_tags(self) -> List[Dict]:
-        #Return all tags as a list
-        self.cursor.execute("SELECT id, label FROM tags ORDER BY label")
-        return [dict(row) for row in self.cursor.fetchall()]
- 
+
+    def get_genres_with_stats(self) :
+        self.cursor.execute(
+            "SELECT DISTINCT genre, COUNT(genre) AS count, AVG(rating) AS avg FROM books GROUP BY genre"
+        )
+        rows = self.cursor.fetchall()
+        return [dict(row) for row in rows]
+
+###############################################################################REVIEW RELATED FUNCTIONS#####################################################################
+    def update_review(self, book_id, new):
+        query = f"UPDATE books SET review_content = '{new}' WHERE id = {book_id}"
+        self.cursor.execute(query)
+        self.connection.commit()
+
+    def delete_review(self, book_id):
+        query = f"UPDATE books SET review_content = NULL WHERE id = {book_id}"
+        self.cursor.execute(query)
+        self.connection.commit()
+
+###############################################################################TAG RELATED FUNCTIONS########################################################################
     def create_tag(self, label: str) -> int:
         #Insert a new tag and return its id
         label = label.strip()
@@ -210,48 +247,21 @@ class DatabaseBackend:
             (book_id,),
         )
         return [dict(row) for row in self.cursor.fetchall()]
-    
-    # Combined filter
-    def get_filtered_books(
-        self,
-        status: Optional[str] = None,
-        genre: Optional[str] = None,
-        tag_ids: Optional[List[int]] = None,
-        sort_by: str = "id",
-    ) -> List[Dict]:
-        #Return books matching ALL supplied filters.
-        conditions: List[str] = []
-        params: List = []
- 
-        # Status filter
-        if status and status not in ("All", "Filter by status"):
-            status_map = {
-                "To Read": "to-read",
-                "Completed": "completed",
-                "Currently Reading": "currently reading",
-            }
-            db_status = status_map.get(status, status.lower())
-            conditions.append("b.status = ?")
-            params.append(db_status)
- 
-        # Genre filter
-        if genre and genre not in ("All Genres", "Filter by genre"):
-            conditions.append("b.genre = ?")
-            params.append(genre)
- 
-        # Tag filter: book must have ALL selected tags
-        if tag_ids:
-            for tid in tag_ids:
-                conditions.append(
-                    "EXISTS (SELECT 1 FROM book_tags bt WHERE bt.book_id = b.id AND bt.tag_id = ?)"
-                )
-                params.append(tid)
- 
-        where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
-        query = f"SELECT b.* FROM books b {where_clause} ORDER BY b.{sort_by}"
-        self.cursor.execute(query, params)
+
+    # Tag helper function
+    def get_all_tags(self) -> List[Dict]:
+        #Return all tags as a list
+        self.cursor.execute("SELECT id, label FROM tags ORDER BY label")
         return [dict(row) for row in self.cursor.fetchall()]
-    
+
+    def get_tags_with_stats(self) :
+        self.cursor.execute(
+            "SELECT label AS tag, COUNT(label) AS count, AVG(rating) AS avg FROM (SELECT tags.label, books.rating FROM tags, book_tags, books WHERE tags.id = book_tags.tag_id AND book_tags.book_id = books.id) GROUP BY tag"
+        )
+        rows = self.cursor.fetchall()
+        return [dict(row) for row in rows]
+
+###############################################################################CLOSE CONNECTION FUNCTION####################################################################
     def close(self):
         # Closes database connection
         if self.connection:
@@ -262,32 +272,6 @@ class DatabaseBackend:
 #Test to display books
 if __name__ == "__main__":
     db = DatabaseBackend("books.db")
-    
-    # Check if database is empty
-    books = db.get_all_books()
-
-    """if len(books) == 0:
-        print("Adding sample books...")
-        # Add some sample books directly for testing
-        db.cursor.execute('''
-            INSERT INTO books (id, title, author, genre, year, rating, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (1, "1984", "George Orwell", "Dystopian Fiction", 1949, 4.5, "completed"))
-        
-        db.cursor.execute('''
-            INSERT INTO books (id, title, author, genre, year, rating, review_content, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (2, "To Kill a Mockingbird", "Harper Lee", "Classic Fiction", 1960, 5.0, "the book was good", "completed"))
-        
-        db.cursor.execute('''
-            INSERT INTO books (id, title, author, genre, year, rating, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (3, "The Great Gatsby", "F. Scott Fitzgerald", "Classic Fiction", 1925, 4.0, "to-read"))
-        
-        db.connection.commit()
-        print("Sample books added!")
-    else:
-        print(f"Database already has {len(books)} books")"""
     
     # Display all books
     books = db.get_all_books()
