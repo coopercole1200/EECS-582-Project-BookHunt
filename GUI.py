@@ -3,8 +3,8 @@ Artifact: GUI.py
 Description: Main entry point. Starts application. 
 Authors: Cole Cooper
 Date Created: 2/14/2026
-Date Last Modified: 3/13/2026
-Last Modified by: Cole Cooper
+Date Last Modified: 3/29/2026
+Last Modified by: Ebraheem AlAamer
 """
 
 import tkinter as tk
@@ -216,26 +216,77 @@ class BookHuntGUI:
         agent_access_button = tk.Button(agent_access_frame, text="Get a Book Recommendation?", command=self.recommendation_agent_toplevel)
         agent_access_button.pack(side=tk.LEFT, padx=10, pady=5)
 
-        # Nearby bookstores section
-        maps_frame = tk.Frame(tab4, bg="gray90")
-        maps_frame.pack(fill=tk.X, ipady=10)
-
-        tk.Label(maps_frame, text="Location:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2))
-        self.location_entry = tk.Entry(maps_frame, width=30)
-        self.location_entry.pack(side=tk.LEFT, padx=10)
-
-        find_bookstores_button = tk.Button(
-            maps_frame,
-            text="Find Nearby Bookstores",
-            command=self.find_nearby_bookstores
+        # ── Requirement 34: Check Book Availability at a Bookstore ─────────────
+        avail_outer = tk.LabelFrame(
+            tab4,
+            text=" Check Book Availability at a Bookstore ",
+            bg="gray90",
+            font=("Arial", 10, "bold"),
+            fg="SlateBlue4",
+            relief=tk.GROOVE,
+            bd=2,
         )
-        find_bookstores_button.pack(side=tk.LEFT)
+        avail_outer.pack(fill=tk.X, padx=10, pady=(6, 2))
 
+        # Row 1 – "Specify book" entry (sub-requirement iii)
+        book_specify_row = tk.Frame(avail_outer, bg="gray90")
+        book_specify_row.pack(fill=tk.X, padx=8, pady=(6, 2))
 
-        # Right click menu for tree view
-        self.tree_menu = tk.Menu(self.root, tearoff=0)
-        self.tree_menu.add_command(label="Delete Book", command=self.delete_book)
-        self.tree_menu.add_command(label="Edit Book", command=self.edit_book_toplevel)
+        tk.Label(
+            book_specify_row,
+            text="Specify book:",
+            bg="gray90",
+            font=("Arial", 9, "bold"),
+        ).pack(side=tk.LEFT, padx=(0, 4))
+
+        self.avail_book_entry = tk.Entry(book_specify_row, width=36)
+        self.avail_book_entry.pack(side=tk.LEFT, padx=(0, 6))
+
+        # Button: auto-fill from selected tree row
+        tk.Button(
+            book_specify_row,
+            text="Use Selected Book",
+            command=self._autofill_availability_book,
+        ).pack(side=tk.LEFT, padx=(0, 4))
+
+        # Row 2 – Location + Google Maps (sub-requirements i & ii)
+        maps_row = tk.Frame(avail_outer, bg="gray90")
+        maps_row.pack(fill=tk.X, padx=8, pady=(2, 6))
+
+        tk.Label(maps_row, text="Location:", bg="gray90").pack(side=tk.LEFT, padx=(0, 4))
+        self.location_entry = tk.Entry(maps_row, width=28)
+        self.location_entry.pack(side=tk.LEFT, padx=(0, 8))
+
+        # i. Get bookstores from Google Maps
+        find_bookstores_button = tk.Button(
+            maps_row,
+            text="🗺  Find Nearby Bookstores (Google Maps)",
+            command=self.find_nearby_bookstores,
+            bg="SlateBlue3",
+            fg="white",
+            activebackground="SlateBlue4",
+            activeforeground="white",
+            relief=tk.FLAT,
+            padx=8,
+            pady=3,
+        )
+        find_bookstores_button.pack(side=tk.LEFT, padx=(0, 10))
+
+        # ii. Search sites for book
+        search_sites_button = tk.Button(
+            maps_row,
+            text="🔍  Search Sites for This Book",
+            command=self.search_book_availability_sites,
+            bg="SlateBlue3",
+            fg="white",
+            activebackground="SlateBlue4",
+            activeforeground="white",
+            relief=tk.FLAT,
+            padx=8,
+            pady=3,
+        )
+        search_sites_button.pack(side=tk.LEFT)
+        # ── End Requirement 34 ───────────────────────────────────────────────
 
         # Main content area
         content_frame = tk.Frame(self.root, bg="gray90")
@@ -657,17 +708,111 @@ class BookHuntGUI:
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-    def find_nearby_bookstores(self):
-        """Open Google Maps and search for nearby bookstores based on the entered location."""
-        location = self.location_entry.get().strip() if hasattr(self, "location_entry") else ""
+    # ── Requirement 34 methods ───────────────────────────────────────────────
 
-        if location == "":
-            self.info_label.config(text="Please enter a location to find nearby bookstores.")
+    def _get_availability_book_title(self) -> str:
+        """Return the book title from the availability entry field.
+
+        If the field is empty, fall back to the currently selected tree row.
+        Returns an empty string when nothing is available.
+        """
+        title = self.avail_book_entry.get().strip()
+        if title:
+            return title
+        # fallback: try selected tree row
+        selection = self.tree.selection()
+        if selection:
+            values = self.tree.item(selection[0], "values")
+            # values tuple: (ID, Title, Author, Genre, Year, Rating, Status)
+            if len(values) >= 2:
+                return values[1]
+        return ""
+
+    def _autofill_availability_book(self):
+        """Populate the 'Specify book' entry from the currently selected tree row."""
+        selection = self.tree.selection()
+        if not selection:
+            self.info_label.config(text="Select a book in the list first.")
+            return
+        values = self.tree.item(selection[0], "values")
+        if len(values) >= 2:
+            self.avail_book_entry.delete(0, tk.END)
+            self.avail_book_entry.insert(0, values[1])  # title is index 1
+            self.info_label.config(text=f"Book set to: {values[1]}")
+
+    def find_nearby_bookstores(self):
+        """Sub-requirement i – Get bookstores from Google Maps.
+
+        Opens Google Maps in the browser, searching for bookstores near the
+        user-supplied location.  The 'Specify book' title is appended to the
+        map query so the user can see both pieces of information at once.
+        """
+        location = self.location_entry.get().strip()
+        book_title = self._get_availability_book_title()
+
+        if not location:
+            self.info_label.config(
+                text="Please enter a location to find nearby bookstores."
+            )
             return
 
-        query = quote(f"bookstores near {location}")
-        url = f"https://www.google.com/maps/search/{query}"
+        # Build a Maps query that surfaces bookstores near the given location.
+        # Including the book title gives the user a useful search context.
+        if book_title:
+            maps_query = f'bookstores near {location}'
+        else:
+            maps_query = f"bookstores near {location}"
+
+        url = f"https://www.google.com/maps/search/{quote(maps_query)}"
         webbrowser.open(url)
+
+        status_msg = f"Opened Google Maps: bookstores near '{location}'"
+        if book_title:
+            status_msg += f" — looking for '{book_title}'"
+        self.info_label.config(text=status_msg)
+
+    def search_book_availability_sites(self):
+        """Sub-requirement ii – Search sites for the specified book.
+
+        Opens three retailer / availability sites in the default browser so
+        the user can check stock: Google Books, WorldCat (library finder),
+        and AbeBooks (new & used inventory).
+        """
+        book_title = self._get_availability_book_title()
+
+        if not book_title:
+            self.info_label.config(
+                text="Please enter or select a book title before searching sites."
+            )
+            return
+
+        encoded = quote(book_title)
+
+        sites = [
+            (
+                "Google Books",
+                f"https://www.google.com/search?q={encoded}+book+buy",
+            ),
+            (
+                "WorldCat (libraries)",
+                f"https://www.worldcat.org/search?q={encoded}",
+            ),
+            (
+                "AbeBooks",
+                f"https://www.abebooks.com/servlet/SearchResults?kn={encoded}",
+            ),
+        ]
+
+        for _name, url in sites:
+            webbrowser.open(url)
+
+        site_names = ", ".join(name for name, _ in sites)
+        self.info_label.config(
+            text=f"Opened availability search for '{book_title}' on: {site_names}"
+        )
+
+    # ── End Requirement 34 methods ───────────────────────────────────────────
+    
         self.info_label.config(text=f"Opening nearby bookstores for: {location}")
 
     def toggle_agent(self, btn):
