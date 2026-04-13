@@ -11,9 +11,13 @@ import tkinter as tk
 import webbrowser
 from tkinter import ttk
 from urllib.parse import quote
+from openai import OpenAI
+import os
+from dotenv import load_dotenv
 
 from database import DatabaseBackend
 
+#API_KEY =
 
 class BookHuntGUI:    
     def __init__(self, root):
@@ -681,7 +685,7 @@ class BookHuntGUI:
         label_frame = tk.Frame(agent_window)
         label_frame.pack(fill=tk.X)
         dynamic_frame = tk.Frame(agent_window)
-        dynamic_frame.pack(fill=tk.X)
+        dynamic_frame.pack(fill=tk.X, pady=5)
 
         #Button for moving to second stage of recommendation specification
         get_recommendation_button = tk.Button(button_frame, text="Next", command = lambda : self.specify_recommendation(type_selection, dynamic_frame, label_frame))
@@ -719,11 +723,12 @@ class BookHuntGUI:
         if num == 0 :
             # create tree and button to select book(s) from database
             tk.Label(label_frame, text="Select Books", font=("Arial", 14, "bold"), bg="gray90", width=500).pack()
-            columns = ("ID #", "Title", "Author")
+            columns = ("ID #", "Title", "Author", "Rating")
             tree = ttk.Treeview(frame, columns=columns, show="headings", yscrollcommand=scrollbar.set)
             tree.column("ID #", width=20)
-            tree.column("Title", width=380)
+            tree.column("Title", width=300)
             tree.column("Author", width=150)
+            tree.column("Rating", width=80)
             # Configure headings
             for col in columns:
                 tree.heading(col, text=col)
@@ -741,9 +746,14 @@ class BookHuntGUI:
 
                 tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
 
-                values = (book['id'], book['title'], book['author'],)
+                rating_str = f"{book['rating']}/5" if book['rating'] else "N/A"
+
+                values = (book['id'], book['title'], book['author'], rating_str)
 
                 tree.insert("", tk.END, values=values, tags=(tag,))
+
+            query_button = tk.Button(frame, text="Get Recommendation from Selection", command=lambda : self.model_query_books(tree))
+            query_button.pack()
             return
 
         # Get recommendation from specific genre(s)
@@ -777,6 +787,8 @@ class BookHuntGUI:
 
                 tree.insert("", tk.END, values=values, tags=(tag,))
 
+            query_button = tk.Button(frame, text="Get Recommendation from Selection", command=lambda : self.model_query_genres(tree))
+            query_button.pack()
             return
 
         # Get recommendation from specific tag(s)
@@ -809,7 +821,78 @@ class BookHuntGUI:
                 values = (tag_i['tag'], tag_i['count'], tag_i['avg'],)
 
                 tree.insert("", tk.END, values=values, tags=(tag,))
+
+            query_button = tk.Button(frame, text="Get Recommendation from Selection", command=lambda : self.model_query_tags(tree))
+            query_button.pack()
             return
+
+    def model_query_books(self, tree) :
+        selected_books = tree.selection()
+        titles = []
+        authors = []
+        ratings = []
+        for selection in selected_books :
+            titles.append(tree.item(selection, "values")[1])
+            authors.append(tree.item(selection, "values")[2])
+            ratings.append(tree.item(selection, "values")[3])
+
+
+        if not(len(titles) < 1) :
+            load_dotenv()
+            client = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=os.getenv('API_KEY'))
+
+            completion = client.chat.completions.create(
+                model="openai/gpt-oss-120b:free",  # Check OpenRouter for current free model IDs
+                messages=[{"role": "user", "content": f'give me 3 book recommendation if I have read this/these book(s): {titles} by {authors} and rated them {ratings} respectively on a scale of 0-5. Only list the title, author, and a short single-sentence description. do not put it in a list format'}]
+            )
+            print(completion.choices[0].message.content)
+            client.close()
+
+    def model_query_genres(self, tree) :
+        selected_genres = tree.selection()
+        genres = []
+        counts = []
+        averages = []
+        for selection in selected_genres:
+            genres.append(tree.item(selection, "values")[0])
+            counts.append(tree.item(selection, "values")[1])
+            averages.append(tree.item(selection, "values")[2])
+
+        """load_dotenv()
+        client = OpenAI(
+            base_url="https://openrouter.ai",
+            api_key=os.getenv('API_KEY'))
+
+        completion = client.chat.completions.create(
+            model="openai/gpt-oss-120b:free",  # Check OpenRouter for current free model IDs
+            messages=[{"role": "user", "content": "Hello!"}]
+        )
+        print(completion.choices[0].message.content)
+        client.close()"""
+
+    def model_query_tags(self,tree) :
+        selected_tags = tree.selection()
+        tags = []
+        counts = []
+        averages = []
+        for selection in selected_tags:
+            tags.append(tree.item(selection, "values")[0])
+            counts.append(tree.item(selection, "values")[1])
+            averages.append(tree.item(selection, "values")[2])
+
+        """load_dotenv()
+        client = OpenAI(
+            base_url="https://openrouter.ai",
+            api_key=os.getenv('API_KEY'))
+
+        completion = client.chat.completions.create(
+            model="openai/gpt-oss-120b:free",  # Check OpenRouter for current free model IDs
+            messages=[{"role": "user", "content": "Hello!"}]
+        )
+        print(completion.choices[0].message.content)
+        client.close()"""
 
 def main():
     root = tk.Tk()
