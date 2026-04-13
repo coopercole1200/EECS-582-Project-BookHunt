@@ -46,7 +46,7 @@ class BookHuntGUI:
         self.load_books(self.db.get_all_books("id"))
 
     def setup_ui(self):
-        # Title
+        ### Title ###
         title_frame = tk.Frame(self.root, bg="SlateBlue3", height=80)
         title_frame.pack(fill=tk.X)
         title_frame.pack_propagate(False)
@@ -60,20 +60,136 @@ class BookHuntGUI:
         )
         title_label.pack(expand=True)
 
-        # setup review frame; actual review display is setup further down after treeview setup
-        self.review_frame = tk.Frame(self.root, bg="SlateBlue3", height=80)
-        self.review_frame.pack(fill=tk.X)
+        ### Frame Structure ###
+        main_frame = tk.Frame(self.root)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        notebook = ttk.Notebook(main_frame)
+        notebook.pack(fill=tk.BOTH, expand=True)
+
+        ## TAB 1 ##
+        tab1 = tk.Frame(notebook, bg="gray90")
+        notebook.add(tab1, text="Search")
+
+        # Search area #
+        searching_frame = tk.Frame(tab1, bg="gray90")
+        searching_frame.pack(fill=tk.X, pady=5)
+        self.search_field = tk.Entry(searching_frame)
+        self.search_field.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10)
+        search_button = tk.Button(searching_frame, text="Search for Title", command=self.search_book)
+        search_button.pack(side=tk.LEFT, padx=(0, 6), pady=8)
+
+        # Filters #
+        filter_frame = tk.Frame(tab1, bg="gray90")
+        filter_frame.pack(fill=tk.X)
+
+        # Status Filter #
+        tk.Label(filter_frame, text="Status:", bg="gray90").pack(side=tk.LEFT, padx=5)
+        dropdown_options = ["All", "Completed", "To Read", "Currently Reading"]
+        self.status_dropdown = ttk.Combobox(filter_frame, values=dropdown_options, width=15, state="readonly")
+        self.status_dropdown.set("All")
+        self.status_dropdown.pack(side=tk.LEFT, padx=5)
+
+        # Genre Filter #
+        tk.Label(filter_frame, text="Genre:", bg="gray90").pack(side=tk.LEFT, padx=5)
+        self.genre_dropdown = ttk.Combobox(filter_frame, values=["All Genres"], width=15, state="readonly")
+        self.genre_dropdown.set("All Genres")
+        self.genre_dropdown.pack(side=tk.LEFT, padx=5)
+
+        # Tag Filter #
+        tk.Label(filter_frame, text="Tag:", bg="gray90").pack(side=tk.LEFT, padx=5)
+        self.tag_dropdown = ttk.Combobox(filter_frame, values=["All Tags"], width=15, state="readonly")
+        self.tag_dropdown.set("All Tags")
+        self.tag_dropdown.pack(side=tk.LEFT, padx=5)
+ 
+        # Apply / Clear buttons #
+        apply_filter_button = tk.Button(filter_frame, text="Apply Filter(s)", command=self.apply_filters)
+        apply_filter_button.pack(side=tk.LEFT, padx=10)
+        clear_filter_button = tk.Button(filter_frame, text="Clear Filters", command=self.clear_filters)
+        clear_filter_button.pack(side=tk.LEFT)
+
+        # Sorting options frame #
+        sorting_frame = tk.Frame(tab1, bg="gray90")
+        sorting_frame.pack(fill=tk.X, pady=5)
+        tk.Label(sorting_frame, text="Sort by:", bg="gray90").pack(side=tk.LEFT, padx=5)
+        self.sorting_dropdown = ttk.Combobox(sorting_frame, values=["id", "title", "author", "genre", "year", "status"], width=15, state="readonly")
+        self.sorting_dropdown.set("id")
+        self.sorting_dropdown.pack(side=tk.LEFT, padx=5)
+
+        sorting_button = tk.Button(sorting_frame, text="Apply Sorting", command=self.apply_sorting)
+        sorting_button.pack(side=tk.LEFT, padx=10)
+
+        ## Tab 2 ##
+        tab2 = tk.Frame(notebook, bg="gray90")
+        notebook.add(tab2, text="Add")
+
+        # Add create book button field #
+        creation_frame = tk.Frame(tab2, bg="gray90")
+        creation_frame.pack(fill=tk.X, pady=5)
+        create_book_button = tk.Button(creation_frame, text="Create a Book Entry", command=self.create_book)
+        create_book_button.pack(side=tk.LEFT, padx=10)
+
+        # --- Book attribute input fields (used by Create a Book Entry) --- #
+        tk.Label(creation_frame, text="Title:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2))
+        self.title_entry = tk.Entry(creation_frame, width=15)
+        self.title_entry.pack(side=tk.LEFT, padx=5)
+
+        tk.Label(creation_frame, text="Author:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
+        self.author_entry = tk.Entry(creation_frame, width=15)
+        self.author_entry.pack(side=tk.LEFT, padx=5)
+
+        tk.Label(creation_frame, text="Genre:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
+        self.genre_entry = tk.Entry(creation_frame, width=12)
+        self.genre_entry.pack(side=tk.LEFT, padx=5)
+
+        tk.Label(creation_frame, text="Year:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
+        self.year_entry = tk.Entry(creation_frame, width=6)
+        self.year_entry.pack(side=tk.LEFT, padx=5)
+
+        tk.Label(creation_frame, text="Rating:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
+        self.rating_entry = tk.Entry(creation_frame, width=6)
+        self.rating_entry.pack(side=tk.LEFT, padx=5)
+
+        tk.Label(creation_frame, text="Status:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
+        self.create_status_dropdown = ttk.Combobox(
+            creation_frame,
+            values=["to-read", "completed", "currently reading"],
+            width=15,
+            state="readonly"
+        )
+        self.create_status_dropdown.set("to-read")
+        self.create_status_dropdown.pack(side=tk.LEFT, padx=5)
+
+        # Tag entry row #
+        tag_entry_frame = tk.Frame(tab2, bg="gray90")
+        tag_entry_frame.pack(fill=tk.X)
+        tk.Label(tag_entry_frame, text="Tags:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2))
+        self.pending_tag_entry = tk.Entry(tag_entry_frame, width=20)
+        self.pending_tag_entry.pack(side=tk.LEFT, padx=5)
+        self.pending_tag_entry.bind("<Return>", lambda e: self._add_pending_tag())
+        tk.Button(tag_entry_frame, text="Add Tag", command=self._add_pending_tag).pack(side=tk.LEFT)
+        self.pending_tags_label = tk.Label(tag_entry_frame, text="No tags added yet.", bg="gray90", fg="gray50")
+        self.pending_tags_label.pack(side=tk.LEFT, padx=10)
+
+        ## Tab 3 ##
+        tab3 = tk.Frame(notebook, bg="gray90")
+        notebook.add(tab3, text="Review")
+
+        # setup review frame; actual review display is setup further down after treeview setup #
+        self.review_frame = tk.Frame(tab3)
+        self.review_frame.pack(fill=tk.X, pady=10)
+        tk.Label(self.review_frame, text="Current Review", font=("Arial", 16, "underline")).pack(side=tk.TOP)
         self.review_content = tk.Label(
             self.review_frame,
             text="no reviews",
-            font=("Arial", 16),
+            font=("Arial", 14),
             bg="SlateBlue2",
             fg="white"
         )
         self.review_content.pack()
 
 
-        # adds/edits to reviews made through this Entry
+        # adds/edits to reviews made through this Entry #
         selectedStarValue = tk.IntVar(value=0)
 
         self.review_entry = tk.Entry(self.review_frame)
@@ -88,129 +204,38 @@ class BookHuntGUI:
         for i, (text, val) in enumerate(starButtons):
             tk.Radiobutton(self.review_stars, text=text, variable=selectedStarValue, value=val).grid(row=0, column=i, padx=5)
 
-        delete_review_button.pack(side=tk.LEFT, padx=(20, 0))
+        delete_review_button.pack(side=tk.LEFT)
 
-        # Right click menu for tree view
-        self.tree_menu = tk.Menu(self.root, tearoff=0)
-        self.tree_menu.add_command(label="Delete Book", command=self.delete_book)
-        self.tree_menu.add_command(label="Edit Book", command=self.edit_book_toplevel)
-
-        # Add create book button field
-        creation_frame = tk.Frame(self.root, bg="gray90")
-        creation_frame.pack(fill=tk.X, ipady=5)
-        create_book_button = tk.Button(creation_frame, text="Create a Book Entry", command=self.create_book)
-        create_book_button.pack(side=tk.LEFT, padx=10, pady=5)
-
-        # --- Book attribute input fields (used by Create a Book Entry) ---
-        tk.Label(creation_frame, text="Title:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2))
-        self.title_entry = tk.Entry(creation_frame, width=18)
-        self.title_entry.pack(side=tk.LEFT, padx=(0, 10))
-
-        tk.Label(creation_frame, text="Author:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
-        self.author_entry = tk.Entry(creation_frame, width=18)
-        self.author_entry.pack(side=tk.LEFT, padx=(0, 10))
-
-        tk.Label(creation_frame, text="Genre:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
-        self.genre_entry = tk.Entry(creation_frame, width=14)
-        self.genre_entry.pack(side=tk.LEFT, padx=(0, 10))
-
-        tk.Label(creation_frame, text="Year:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
-        self.year_entry = tk.Entry(creation_frame, width=6)
-        self.year_entry.pack(side=tk.LEFT, padx=(0, 10))
-
-        tk.Label(creation_frame, text="Rating:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
-        self.rating_entry = tk.Entry(creation_frame, width=6)
-        self.rating_entry.pack(side=tk.LEFT, padx=(0, 10))
-
-        tk.Label(creation_frame, text="Status:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
-        self.create_status_dropdown = ttk.Combobox(
-            creation_frame,
-            values=["to-read", "completed", "currently reading"],
-            width=16,
-            state="readonly"
-        )
-        self.create_status_dropdown.set("to-read")
-        self.create_status_dropdown.pack(side=tk.LEFT, padx=(0, 10))
+        ## TAB 4 ##
+        tab4 = tk.Frame(notebook, bg="gray90")
+        notebook.add(tab4, text="Hunt!")
 
         # Ask for agent recommendation button
-        agent_access_frame = tk.Frame(self.root, bg="gray90")
+        agent_access_frame = tk.Frame(tab4, bg="gray90")
         agent_access_frame.pack(fill=tk.X, ipady=5)
         agent_access_button = tk.Button(agent_access_frame, text="Get a Book Recommendation?", command=self.recommendation_agent_toplevel)
         agent_access_button.pack(side=tk.LEFT, padx=10, pady=5)
 
-        # Tag entry row
-        tag_entry_frame = tk.Frame(self.root, bg="gray90")
-        tag_entry_frame.pack(fill=tk.X, ipady=4)
-        tk.Label(tag_entry_frame, text="Tags:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2))
-        self.pending_tag_entry = tk.Entry(tag_entry_frame, width=18)
-        self.pending_tag_entry.pack(side=tk.LEFT, padx=(0, 4))
-        self.pending_tag_entry.bind("<Return>", lambda e: self._add_pending_tag())
-        tk.Button(tag_entry_frame, text="Add Tag", command=self._add_pending_tag).pack(side=tk.LEFT, padx=(0, 10))
-        self.pending_tags_label = tk.Label(tag_entry_frame, text="No tags added yet.", bg="gray90", fg="gray50")
-        self.pending_tags_label.pack(side=tk.LEFT)
-
-        # Filters
-        filter_frame = tk.Frame(self.root, bg="gray90")
-        filter_frame.pack(fill=tk.X, ipady=4)
-
-        # Status Filter
-        tk.Label(filter_frame, text="Status:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2), pady=8)
-        dropdown_options = ["All", "Completed", "To Read", "Currently Reading"]
-        self.status_dropdown = ttk.Combobox(filter_frame, values=dropdown_options, width=16, state="readonly")
-        self.status_dropdown.set("All")
-        self.status_dropdown.pack(side=tk.LEFT, padx=(0,16), pady=8)
-
-        # Genre Filter
-        tk.Label(filter_frame, text="Genre:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2), pady=8)
-        self.genre_dropdown = ttk.Combobox(filter_frame, values=["All Genres"], width=18, state="readonly")
-        self.genre_dropdown.set("All Genres")
-        self.genre_dropdown.pack(side=tk.LEFT, padx=(0, 16), pady=8)
-
-        # Tag Filter
-        tk.Label(filter_frame, text="Tag:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2), pady=8)
-        self.tag_dropdown = ttk.Combobox(filter_frame, values=["All Tags"], width=18, state="readonly")
-        self.tag_dropdown.set("All Tags")
-        self.tag_dropdown.pack(side=tk.LEFT, padx=(0, 16), pady=8)
- 
-        # -- Apply / Clear buttons --
-        apply_filter_button = tk.Button(filter_frame, text="Apply Filter(s)", command=self.apply_filters)
-        apply_filter_button.pack(side=tk.LEFT, padx=(0, 6), pady=8)
-        clear_filter_button = tk.Button(filter_frame, text="Clear Filters", command=self.clear_filters)
-        clear_filter_button.pack(side=tk.LEFT, pady=8)
-
-        # Sorting options frame
-        sorting_frame = tk.Frame(self.root, bg="gray90")
-        sorting_frame.pack(fill=tk.X, ipady=4)
-        tk.Label(sorting_frame, text="Sort by:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2), pady=8)
-        self.sorting_dropdown = ttk.Combobox(sorting_frame, values=["id", "title", "author", "genre", "year", "status"], width=18, state="readonly")
-        self.sorting_dropdown.set("id")
-        self.sorting_dropdown.pack(side=tk.LEFT, padx=(0, 16), pady=8)
-
-        sorting_button = tk.Button(sorting_frame, text="Apply Sorting", command=self.apply_sorting)
-        sorting_button.pack(side=tk.LEFT, padx=(0, 6), pady=8)
-
-        # Search area
-        searching_frame = tk.Frame(self.root, bg="gray90")
-        searching_frame.pack(fill=tk.X, ipady=4)
-        self.search_field = tk.Entry(searching_frame)
-        self.search_field.pack(anchor="w", fill=tk.X, ipadx=100)
-        search_button = tk.Button(searching_frame, text="Search for Title", command=self.search_book)
-        search_button.pack(side=tk.LEFT, padx=(0, 6), pady=8)
-
         # Nearby bookstores section
-        maps_frame = tk.Frame(self.root, bg="gray90")
+        maps_frame = tk.Frame(tab4, bg="gray90")
         maps_frame.pack(fill=tk.X, ipady=10)
 
         tk.Label(maps_frame, text="Location:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2))
         self.location_entry = tk.Entry(maps_frame, width=30)
-        self.location_entry.pack(side=tk.LEFT, padx=(0, 10))
+        self.location_entry.pack(side=tk.LEFT, padx=10)
 
         find_bookstores_button = tk.Button(
             maps_frame,
             text="Find Nearby Bookstores",
             command=self.find_nearby_bookstores
         )
-        find_bookstores_button.pack(side=tk.LEFT, padx=10, pady=5)
+        find_bookstores_button.pack(side=tk.LEFT)
+
+
+        # Right click menu for tree view
+        self.tree_menu = tk.Menu(self.root, tearoff=0)
+        self.tree_menu.add_command(label="Delete Book", command=self.delete_book)
+        self.tree_menu.add_command(label="Edit Book", command=self.edit_book_toplevel)
 
         # Main content area
         content_frame = tk.Frame(self.root, bg="gray90")
