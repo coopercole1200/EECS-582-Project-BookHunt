@@ -8,16 +8,22 @@ Last Modified by: Ebraheem AlAamer
 """
 
 import tkinter as tk
-from tkinter import ttk
-from database import DatabaseBackend
 import webbrowser
+from tkinter import ttk
 from urllib.parse import quote
+from openai import OpenAI
+import os
+from dotenv import load_dotenv
+
+from database import DatabaseBackend
+
+#API_KEY =
 
 class BookHuntGUI:    
     def __init__(self, root):
         self.root = root
         self.root.title("BookHunt")
-        self.root.geometry("900x900")
+        self.root.geometry("900x800")
         
         # Initialize database
         self.db = DatabaseBackend()
@@ -32,6 +38,9 @@ class BookHuntGUI:
         # Populate filter dropdown from Database
         self.refresh_genre_dropdown()
         self.refresh_tag_dropdown()
+
+        # Boolean to track user allowing recommendation agent to access the book entries
+        self.agent_optin = False
         
         # Load example books
         self.load_books(self.db.get_all_books("id"))
@@ -88,9 +97,9 @@ class BookHuntGUI:
 
         # Add create book button field
         creation_frame = tk.Frame(self.root, bg="gray90")
-        creation_frame.pack(fill=tk.X, ipady=20)
+        creation_frame.pack(fill=tk.X, ipady=5)
         create_book_button = tk.Button(creation_frame, text="Create a Book Entry", command=self.create_book)
-        create_book_button.pack(side=tk.LEFT, padx=10, pady=10)
+        create_book_button.pack(side=tk.LEFT, padx=10, pady=5)
 
         # --- Book attribute input fields (used by Create a Book Entry) ---
         tk.Label(creation_frame, text="Title:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2))
@@ -122,6 +131,12 @@ class BookHuntGUI:
         )
         self.create_status_dropdown.set("to-read")
         self.create_status_dropdown.pack(side=tk.LEFT, padx=(0, 10))
+
+        # Ask for agent recommendation button
+        agent_access_frame = tk.Frame(self.root, bg="gray90")
+        agent_access_frame.pack(fill=tk.X, ipady=5)
+        agent_access_button = tk.Button(agent_access_frame, text="Get a Book Recommendation?", command=self.recommendation_agent_toplevel)
+        agent_access_button.pack(side=tk.LEFT, padx=10, pady=5)
 
         # Tag entry row
         tag_entry_frame = tk.Frame(self.root, bg="gray90")
@@ -305,21 +320,14 @@ class BookHuntGUI:
         # the mainloop will run self.on_tree_select() when an item is selected in the TreeView
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
 
+        # bind double-left-click to the TreeView to show book's reviews
+        self.tree.bind("<Double-1>", self.display_review_window)
+
         # Bind right click event to the tree to access edit (and eventually delete) book functionality
         self.tree.bind("<Button-3>", self.tree_right_click)
 
     def create_book(self) :
-        """create book helper function
-
-        Uses the text entry fields next to the Create button (title/author/etc.) as parameters
-        to the database INSERT. If the fields don't exist for any reason, it falls back to
-        the original behavior (hardcoded example insert).
-        """
-        # Backwards-compatible fallback
-        if not hasattr(self, "title_entry") or not hasattr(self, "author_entry"):
-            self.db.create_book()
-            self.load_books(self.db.get_all_books())
-            return
+        """create book helper function using the text entry fields next to the Create button as parameters to the INSERT query"""
 
         title = self.title_entry.get().strip()
         author = self.author_entry.get().strip()
@@ -488,6 +496,48 @@ class BookHuntGUI:
         cancel_button.pack(side=tk.LEFT, padx=10, pady=10)
         submit_button.pack(side=tk.RIGHT, padx=10, pady=10)
 
+    def display_review_window(self, event):
+        """create pop-up window to view book's review entries"""
+        item_id = self.tree.identify_row(event.y)
+        if not item_id:
+            return
+
+        # setup data from treeview for use in code below
+        # this will have to be updated if any fields are added/updated/removed
+        book_data = self.tree.item(item_id, "values")
+        book_id, title, author, genre, date_published, rating, is_completed = book_data
+        print(book_data)
+
+        #create the pop-up window, force focus onto it, and prevent user from interacting with main window while pop-up is up
+        review_window = tk.Toplevel(self.root)
+        review_window.title(f"{title} Reviews")
+        review_window.geometry("500x450")
+        review_window.attributes('-topmost', True)
+        review_window.focus_set()
+        review_window.grab_set()
+
+        # create the header frame where the title of the book will go
+        header_frame = tk.Frame(review_window, bg="SlateBlue3", height=120)
+        label_text = f"{title}, {author}"
+        tk.Label(header_frame, text=label_text, font=("Arial", 20, "bold")).pack(side=tk.TOP)
+        header_frame.pack(fill=tk.X)
+
+        # create the frame where the review entries will show up
+        entry_frame = tk.Frame(review_window, bg="gray90", height=80)
+        entry_frame.pack(fill=tk.X)
+        
+        # create a label giving user interaction instructions
+
+        # reviews: dict = self.db.get_reviews(book_id)
+        # for every review, we will pack a new label
+        # review_content = ""
+        # tk.Label(entry_frame, text=review_content, font=("Arial", 12, "bold")).pack(side=tk.TOP)
+
+        # for now:
+        review_content = self.db.get_specific_book(book_id)[6]
+        print(review_content)
+        tk.Label(entry_frame, text=f"review 1: {review_content}", font=("Arial", 12, "bold")).pack(side=tk.TOP)
+
     def apply_edit(self, text_fields, window) :
         """get the new attributes from the given entry field references, apply the edit"""
 
@@ -602,18 +652,14 @@ class BookHuntGUI:
         self.pending_tags_label.config(text="Tags: " + ", ".join(self._pending_tags), fg="black")
 
     def load_books(self, books):
-        # Prevent duplicate rows when reloading
+        # Prevent duplicating rows when reloading
         self.clear_treeview()
         # Update info label
         num_books = self.db.get_book_count()
         self.info_label.config(text=f"Your Book Collection ({num_books} books)")
-        
-        # Reset the book mapping
-        self.book_mapping = {}
 
         # Insert books into table
         for idx, book in enumerate(books):
-            self.book_mapping[idx] = book
             tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
             
             # Format rating
@@ -748,6 +794,256 @@ class BookHuntGUI:
 
     # ── End Requirement 34 methods ───────────────────────────────────────────
     
+        self.info_label.config(text=f"Opening nearby bookstores for: {location}")
+
+    def toggle_agent(self, btn):
+        # Toggles between the button being unclickable or not based on checkbox
+        if (self.check_var.get()):
+            btn['state'] = 'normal'
+        else:
+            btn['state'] = 'disabled'
+            
+    def recommendation_agent_toplevel(self) :
+        """Open the window for interacting with the recommendation agent, interactions done by helpers called in this function"""
+
+        #create the pop-up window, force focus onto it, and prevent user from interacting with main window while pop-up is up
+        agent_window = tk.Toplevel(self.root)
+        agent_window.title("Book Recommendation Agent")
+        agent_window.geometry("600x600")
+        agent_window.attributes('-topmost', True)
+        agent_window.focus_force()
+        agent_window.grab_set()
+
+        #Select type of recommendation
+        tk.Label(agent_window, text="What would you like your recommendation based off of?").pack(side="top")
+        type_frame = tk.Frame(agent_window)
+        type_frame.pack(fill=tk.X)
+        type_selection = tk.IntVar(value=5)
+        typeButtons = [("Book(s)", 0), ("Genre(s)", 1), ("Tag(s)", 2)]
+        for i, (text, val) in enumerate(typeButtons):
+            tk.Radiobutton(type_frame, text=text, variable=type_selection, value=val).grid(row=i, column=0, sticky="W")
+
+        #Frame for the button to enter initial selection of recommendation type
+        button_frame = tk.Frame(agent_window)
+        button_frame.pack(fill=tk.X)
+
+        #Frame for opting in to AI agent interaction
+        opt_in_frame = tk.Frame(agent_window)
+        opt_in_frame.pack(fill=tk.X)
+
+        #After selecting type of recommendation, further specification between "all" or "specific entry" appears in this frame
+        #this will be done in the specify_recommendation function
+        label_frame = tk.Frame(agent_window)
+        label_frame.pack(fill=tk.X)
+        dynamic_frame = tk.Frame(agent_window)
+        dynamic_frame.pack(fill=tk.X, pady=5)
+
+        #Button for moving to second stage of recommendation specification
+        get_recommendation_button = tk.Button(button_frame, text="Next", command = lambda : self.specify_recommendation(type_selection, dynamic_frame, label_frame))
+        get_recommendation_button['state'] = 'disabled'
+        get_recommendation_button.pack()
+        self.check_var = tk.BooleanVar()
+        self.check_var.set(0)
+        opt_in_button = tk.Checkbutton(opt_in_frame, text="Opt-in to sharing your stored book data with an AI Agent?", variable=self.check_var, command=lambda: self.toggle_agent(get_recommendation_button))
+        opt_in_button.pack()
+
+        #This is where the recommendation agent text will appear
+        agent_frame = tk.Frame(agent_window, height=120, bg="SlateBlue3")
+        agent_frame.pack(ipady=120, fill=tk.X, side="bottom")
+        tk.Label(agent_frame, text="Recommendation Agent:", bg="SlateBlue3").pack(side="top")
+
+    def specify_recommendation(self, type_selection, frame, label_frame) :
+        """Based on selected option, get info from database, and then pass to agent"""
+
+        #Do nothing if no selection made
+        num = type_selection.get()
+        if num > 2 or num < 0 :
+            return
+
+        #Clear frames so that the user can change recommendation types
+        for widget in label_frame.winfo_children():
+            widget.destroy()
+        for widget in frame.winfo_children():
+            widget.destroy()
+
+        #Create a tree inside the dynamic_frame
+        scrollbar = ttk.Scrollbar(frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        #Get recommendation from specific book(s)
+        if num == 0 :
+            # create tree and button to select book(s) from database
+            tk.Label(label_frame, text="Select Books", font=("Arial", 14, "bold"), bg="gray90", width=500).pack()
+            columns = ("ID #", "Title", "Author", "Rating")
+            tree = ttk.Treeview(frame, columns=columns, show="headings", yscrollcommand=scrollbar.set)
+            tree.column("ID #", width=20)
+            tree.column("Title", width=300)
+            tree.column("Author", width=150)
+            tree.column("Rating", width=80)
+            # Configure headings
+            for col in columns:
+                tree.heading(col, text=col)
+            tree.pack(fill=tk.BOTH, expand=True)
+
+            # Alternate the row colors
+            self.tree.tag_configure('oddrow', background='white')
+            self.tree.tag_configure('evenrow', background='gray95')
+            scrollbar.config(command=self.tree.yview)
+
+            books = self.db.get_all_books()
+
+            # Insert books into table
+            for idx, book in enumerate(books):
+
+                tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
+
+                rating_str = f"{book['rating']}/5" if book['rating'] else "N/A"
+
+                values = (book['id'], book['title'], book['author'], rating_str)
+
+                tree.insert("", tk.END, values=values, tags=(tag,))
+
+            query_button = tk.Button(frame, text="Get Recommendation from Selection", command=lambda : self.model_query_books(tree))
+            query_button.pack()
+            return
+
+        # Get recommendation from specific genre(s)
+        if num == 1 :
+            # create tree and button to select genre(s) from database
+            tk.Label(label_frame, text="Select Genres", font=("Arial", 14, "bold"), bg="gray90", width=500).pack()
+            columns = ("Genre","# of Books w/ Genre", "Avg. Rating")
+            tree = ttk.Treeview(frame, columns=columns, show="headings", yscrollcommand=scrollbar.set)
+            tree.column("Genre", width=350)
+            tree.column("# of Books w/ Genre", width=125)
+            tree.column("Avg. Rating", width=75)
+            # Configure headings
+            for col in columns:
+                tree.heading(col, text=col)
+            tree.pack(fill=tk.BOTH, expand=True)
+
+            # Alternate the row colors
+            self.tree.tag_configure('oddrow', background='white')
+            self.tree.tag_configure('evenrow', background='gray95')
+            scrollbar.config(command=self.tree.yview)
+
+            genres = self.db.get_genres_with_stats()
+            # Insert genres and stats into table
+            for idx, genre in enumerate(genres):
+                if genre['genre'] is None :
+                    continue
+
+                tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
+
+                values = (genre['genre'], genre['count'], genre['avg'],)
+
+                tree.insert("", tk.END, values=values, tags=(tag,))
+
+            query_button = tk.Button(frame, text="Get Recommendation from Selection", command=lambda : self.model_query_genres(tree))
+            query_button.pack()
+            return
+
+        # Get recommendation from specific tag(s)
+        if num == 2 :
+            # create tree and button to select tag(s) from database
+            tk.Label(label_frame, text="Select Tags", font=("Arial", 14, "bold"), bg="gray90", width=500).pack(fill=tk.X)
+            columns = ("Tag","# of Books w/ Tag", "Avg. Rating")
+            tree = ttk.Treeview(frame, columns=columns, show="headings", yscrollcommand=scrollbar.set)
+            tree.column("Tag", width=350)
+            tree.column("# of Books w/ Tag", width=125)
+            tree.column("Avg. Rating", width=75)
+            # Configure headings
+            for col in columns:
+                tree.heading(col, text=col)
+            tree.pack(fill=tk.BOTH, expand=True)
+
+            # Alternate the row colors
+            self.tree.tag_configure('oddrow', background='white')
+            self.tree.tag_configure('evenrow', background='gray95')
+            scrollbar.config(command=self.tree.yview)
+
+            tags = self.db.get_tags_with_stats()
+            # Insert books into table
+            for idx, tag_i in enumerate(tags):
+                if tag_i['tag'] is None:
+                    continue
+
+                tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
+
+                values = (tag_i['tag'], tag_i['count'], tag_i['avg'],)
+
+                tree.insert("", tk.END, values=values, tags=(tag,))
+
+            query_button = tk.Button(frame, text="Get Recommendation from Selection", command=lambda : self.model_query_tags(tree))
+            query_button.pack()
+            return
+
+    def model_query_books(self, tree) :
+        selected_books = tree.selection()
+        titles = []
+        authors = []
+        ratings = []
+        for selection in selected_books :
+            titles.append(tree.item(selection, "values")[1])
+            authors.append(tree.item(selection, "values")[2])
+            ratings.append(tree.item(selection, "values")[3])
+
+
+        if not(len(titles) < 1) :
+            load_dotenv()
+            client = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=os.getenv('API_KEY'))
+
+            completion = client.chat.completions.create(
+                model="openai/gpt-oss-120b:free",  # Check OpenRouter for current free model IDs
+                messages=[{"role": "user", "content": f'give me 3 book recommendation if I have read this/these book(s): {titles} by {authors} and rated them {ratings} respectively on a scale of 0-5. Only list the title, author, and a short single-sentence description. do not put it in a list format'}]
+            )
+            print(completion.choices[0].message.content)
+            client.close()
+
+    def model_query_genres(self, tree) :
+        selected_genres = tree.selection()
+        genres = []
+        counts = []
+        averages = []
+        for selection in selected_genres:
+            genres.append(tree.item(selection, "values")[0])
+            counts.append(tree.item(selection, "values")[1])
+            averages.append(tree.item(selection, "values")[2])
+
+        """load_dotenv()
+        client = OpenAI(
+            base_url="https://openrouter.ai",
+            api_key=os.getenv('API_KEY'))
+
+        completion = client.chat.completions.create(
+            model="openai/gpt-oss-120b:free",  # Check OpenRouter for current free model IDs
+            messages=[{"role": "user", "content": "Hello!"}]
+        )
+        print(completion.choices[0].message.content)
+        client.close()"""
+
+    def model_query_tags(self,tree) :
+        selected_tags = tree.selection()
+        tags = []
+        counts = []
+        averages = []
+        for selection in selected_tags:
+            tags.append(tree.item(selection, "values")[0])
+            counts.append(tree.item(selection, "values")[1])
+            averages.append(tree.item(selection, "values")[2])
+
+        """load_dotenv()
+        client = OpenAI(
+            base_url="https://openrouter.ai",
+            api_key=os.getenv('API_KEY'))
+
+        completion = client.chat.completions.create(
+            model="openai/gpt-oss-120b:free",  # Check OpenRouter for current free model IDs
+            messages=[{"role": "user", "content": "Hello!"}]
+        )
+        print(completion.choices[0].message.content)
+        client.close()"""
 
 def main():
     root = tk.Tk()
