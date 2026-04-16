@@ -23,6 +23,10 @@ class DatabaseBackend:
         # Create initial tables
         # Basic book info, we can change/add features later
         #Creates columns for each in table
+
+        # enable foreign key enforcing
+        self.cursor.execute("PRAGMA foreign_keys = ON;")
+
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS books (
                 id INTEGER PRIMARY KEY,
@@ -33,6 +37,18 @@ class DatabaseBackend:
                 rating REAL CHECK(rating >=0 AND rating <=5),
                 review_content TEXT DEFAULT NULL,
                 status TEXT DEFAULT 'to-read'
+            )
+        ''')
+        # reviews
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS reviews (
+                book_id INTEGER,
+                review_id INTEGER PRIMARY KEY,
+                title TEXT NOT NULL,
+                author TEXT NOT NULL,
+                review TEXT,
+                date TEXT NOT NULL,
+                FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
             )
         ''')
         # Tags table
