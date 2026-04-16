@@ -10,6 +10,8 @@ Last Modified by: Cole Cooper
 # Import Libraries and Tools
 import sqlite3
 from typing import List, Dict, Optional
+from datetime import date
+
 class DatabaseBackend:
     def __init__(self, db_path: str = "books.db"):
         # Initialize database connection and create tables
@@ -42,12 +44,13 @@ class DatabaseBackend:
         # reviews
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS reviews (
-                book_id INTEGER,
                 review_id INTEGER PRIMARY KEY,
+                book_id INTEGER,
                 title TEXT NOT NULL,
                 author TEXT NOT NULL,
                 review TEXT,
-                date TEXT NOT NULL,
+                date_created TEXT NOT NULL,
+                last_updated TEXT NOT NULL,
                 FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
             )
         ''')
@@ -125,15 +128,39 @@ class DatabaseBackend:
             self.cursor.execute(query, (new_attributes[0], book_id))
         self.connection.commit()
     
-    def update_review(self, book_id, new):
-        query = f"UPDATE books SET review_content = '{new}' WHERE id = {book_id}"
-        self.cursor.execute(query)
+    # review helper methods
+    def create_review(self, book_id, title: str, review: str):
+        """create a new review on a book"""
+        today = date.today().isoformat() # the day the create_review() method is run, in format YYYY-MM-DD
+        author = "TODO" # get author from user table
+
+        self.cursor.execute("""
+            INSERT INTO reviews (book_id, title, author, review, date_created, last_updated)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (str(book_id), title, author, review, today, today))
+        self.connection.commit()
+    
+    def update_review(self, review_id, new_title: str, new_review: str):
+        """update an existing review on a book"""
+        today = date.today().isoformat()
+
+        self.cursor.execute("""
+            UPDATE reviews SET title = ?, review = ?, last_updated = ? WHERE id = ?
+        """, (new_title, new_review, today, str(review_id)))
         self.connection.commit()
 
-    def delete_review(self, book_id):
-        query = f"UPDATE books SET review_content = NULL WHERE id = {book_id}"
-        self.cursor.execute(query)
+    def delete_review(self, review_id):
+        """delete an existing review on a book"""
+        self.cursor.execute('DELETE FROM reviews WHERE id = ?', (str(review_id)))
         self.connection.commit()
+
+    def get_reviews(self, book_id):
+        """get all reviews of a certain book"""
+        self.cursor.execute("""SELECT * FROM reviews WHERE book_id = ?
+        """, str(book_id))
+        rows = self.cursor.fetchall()
+
+        return [dict(row) for row in rows]
 
     def get_book_count(self) :
         self.cursor.execute('SELECT COUNT(*) FROM books')

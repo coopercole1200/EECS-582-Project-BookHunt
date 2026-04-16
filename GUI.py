@@ -343,7 +343,7 @@ class BookHuntGUI:
         selected = self.tree.selection()[0]
 
         # there may be a case where all books are unselected? im not sure and i dont
-        # really care to test it right now
+        # really care
         if not selected:
             return
 
