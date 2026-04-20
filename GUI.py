@@ -17,8 +17,6 @@ from dotenv import load_dotenv
 
 from database import DatabaseBackend
 
-#API_KEY =
-
 class BookHuntGUI:    
     def __init__(self, root):
         self.root = root
@@ -335,6 +333,11 @@ class BookHuntGUI:
         # Alternate the row colors
         self.tree.tag_configure('oddrow', background='white')
         self.tree.tag_configure('evenrow', background='gray95')
+
+        # Right click menu for tree view
+        self.tree_menu = tk.Menu(self.root, tearoff=0)
+        self.tree_menu.add_command(label="Delete Book", command=self.delete_book)
+        self.tree_menu.add_command(label="Edit Book", command=self.edit_book_toplevel)
 
         # the mainloop will run self.on_tree_select() when an item is selected in the TreeView
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
