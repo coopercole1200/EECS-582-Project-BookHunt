@@ -812,8 +812,6 @@ class BookHuntGUI:
         )
 
     # ── End Requirement 34 methods ───────────────────────────────────────────
-    
-        self.info_label.config(text=f"Opening nearby bookstores for: {location}")
 
     def toggle_agent(self, btn):
         # Toggles between the button being unclickable or not based on checkbox
@@ -828,7 +826,7 @@ class BookHuntGUI:
         #create the pop-up window, force focus onto it, and prevent user from interacting with main window while pop-up is up
         agent_window = tk.Toplevel(self.root)
         agent_window.title("Book Recommendation Agent")
-        agent_window.geometry("600x600")
+        agent_window.geometry("600x640")
         agent_window.attributes('-topmost', True)
         agent_window.focus_force()
         agent_window.grab_set()
@@ -867,9 +865,12 @@ class BookHuntGUI:
         opt_in_button.pack()
 
         #This is where the recommendation agent text will appear
-        agent_frame = tk.Frame(agent_window, height=120, bg="SlateBlue3")
-        agent_frame.pack(ipady=120, fill=tk.X, side="bottom")
-        tk.Label(agent_frame, text="Recommendation Agent:", bg="SlateBlue3").pack(side="top")
+        self.agent_frame = tk.Frame(agent_window, height=120, bg="SlateBlue3")
+        self.agent_frame.pack(ipady=120, fill=tk.X, side="bottom")
+        tk.Label(self.agent_frame, text="Recommendation Agent:", bg="SlateBlue3").pack(side="top")
+        self.agent_text = tk.Text(self.agent_frame, height=110, width=500)
+        self.agent_text.pack()
+        self.agent_text.tag_configure("center", justify='center')
 
     def specify_recommendation(self, type_selection, frame, label_frame) :
         """Based on selected option, get info from database, and then pass to agent"""
@@ -997,6 +998,7 @@ class BookHuntGUI:
             return
 
     def model_query_books(self, tree) :
+        self.agent_text.delete("1.0", "end")
         selected_books = tree.selection()
         titles = []
         authors = []
@@ -1017,10 +1019,11 @@ class BookHuntGUI:
                 model="openai/gpt-oss-120b:free",  # Check OpenRouter for current free model IDs
                 messages=[{"role": "user", "content": f'give me 3 book recommendation if I have read this/these book(s): {titles} by {authors} and rated them {ratings} respectively on a scale of 0-5. Only list the title, author, and a short single-sentence description. do not put it in a list format'}]
             )
-            print(completion.choices[0].message.content)
+            self.agent_text.insert("1.0", completion.choices[0].message.content, "center")
             client.close()
 
     def model_query_genres(self, tree) :
+        self.agent_text.delete("1.0", "end")
         selected_genres = tree.selection()
         genres = []
         counts = []
@@ -1030,19 +1033,21 @@ class BookHuntGUI:
             counts.append(tree.item(selection, "values")[1])
             averages.append(tree.item(selection, "values")[2])
 
-        """load_dotenv()
-        client = OpenAI(
-            base_url="https://openrouter.ai",
-            api_key=os.getenv('API_KEY'))
+        if not(len(genres) < 1) :
+            load_dotenv()
+            client = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=os.getenv('API_KEY'))
 
-        completion = client.chat.completions.create(
-            model="openai/gpt-oss-120b:free",  # Check OpenRouter for current free model IDs
-            messages=[{"role": "user", "content": "Hello!"}]
-        )
-        print(completion.choices[0].message.content)
-        client.close()"""
+            completion = client.chat.completions.create(
+                model="openai/gpt-oss-120b:free",  # Check OpenRouter for current free model IDs
+                messages=[{"role": "user", "content": f'give me 3 book recommendation if I have read books in this/these genres(s): {genres}, {counts} times respectively and, on average, rated them {averages} respectively on a scale of 0-5. Only list the title, author, and a short single-sentence description. do not put it in a list format'}]
+            )
+            self.agent_text.insert("1.0", completion.choices[0].message.content, "center")
+            client.close()
 
     def model_query_tags(self,tree) :
+        self.agent_text.delete("1.0", "end")
         selected_tags = tree.selection()
         tags = []
         counts = []
@@ -1052,17 +1057,18 @@ class BookHuntGUI:
             counts.append(tree.item(selection, "values")[1])
             averages.append(tree.item(selection, "values")[2])
 
-        """load_dotenv()
-        client = OpenAI(
-            base_url="https://openrouter.ai",
-            api_key=os.getenv('API_KEY'))
+        if not(len(tags) < 1) :
+            load_dotenv()
+            client = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=os.getenv('API_KEY'))
 
-        completion = client.chat.completions.create(
-            model="openai/gpt-oss-120b:free",  # Check OpenRouter for current free model IDs
-            messages=[{"role": "user", "content": "Hello!"}]
-        )
-        print(completion.choices[0].message.content)
-        client.close()"""
+            completion = client.chat.completions.create(
+                model="openai/gpt-oss-120b:free",  # Check OpenRouter for current free model IDs
+                messages=[{"role": "user", "content": f'give me 3 book recommendation if I have read books with this/these content tag(s): {tags}, {counts} times respectively and, on average, rated them {averages} respectively on a scale of 0-5. Only list the title, author, and a short single-sentence description. do not put it in a list format'}]
+            )
+            self.agent_text.insert("1.0", completion.choices[0].message.content, "center")
+            client.close()
 
 def main():
     root = tk.Tk()
