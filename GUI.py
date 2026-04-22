@@ -476,7 +476,7 @@ class BookHuntGUI:
         #create the pop-up window, force focus onto it, and prevent user from interacting with main window while pop-up is up
         edit_window = tk.Toplevel(self.root)
         edit_window.title("Edit Book Entity")
-        edit_window.geometry("500x450")
+        edit_window.geometry("500x350")
         edit_window.attributes('-topmost', True)
         edit_window.focus_force()
         edit_window.grab_set()
@@ -498,14 +498,23 @@ class BookHuntGUI:
         #give the entry fields labels and actually pack them
         tk.Label(entry_frame, text="Enter Book Title:").pack(anchor="w")
         title_field.pack(anchor="w", fill=tk.X, ipadx=100)
+        title_field.insert(0, old_attributes["title"])
         tk.Label(entry_frame, text="Enter Author Name:").pack(anchor="w")
         author_field.pack(anchor="w", fill=tk.X, ipadx=100)
+        author_field.insert(0, old_attributes["author"])
         tk.Label(entry_frame, text="Enter Book Genre:").pack(anchor="w")
         genre_field.pack(anchor="w", fill=tk.X, ipadx=100)
+        genre_field.insert(0, old_attributes["genre"])
         tk.Label(entry_frame, text="Enter Year Published:").pack(anchor="w")
         year_field.pack(anchor="w", fill=tk.X, ipadx=100)
+        year_field.insert(0, old_attributes["year"])
         tk.Label(entry_frame, text="Enter Reading Status:").pack(anchor="w")
         status_field.pack(anchor="w")
+        status_field.set(old_attributes["status"])
+
+        #warning frame to handle error messaging
+        warning_frame = tk.Frame(edit_window)
+        warning_frame.pack(fill=tk.X)
 
         # create a list to hold the references to the text boxes to be passed to apply_edit function
         text_field_references = [title_field, author_field, genre_field, year_field, status_field]
@@ -513,7 +522,7 @@ class BookHuntGUI:
         #create the frame where the buttons show up, create the buttons, and then finally pack the frame and buttons
         button_frame = tk.Frame(edit_window, bg="gray90")
         cancel_button = tk.Button(button_frame, text="Cancel Edit", command=edit_window.destroy) #If not applying edit, simply destroy the window, no change
-        submit_button = tk.Button(button_frame, text="Apply Edit", command=lambda: self.apply_edit(text_field_references, edit_window)) #Apply edit, destroy window afterward
+        submit_button = tk.Button(button_frame, text="Apply Edit", command=lambda: self.apply_edit(text_field_references, edit_window, warning_frame)) #Apply edit, destroy window afterward
         button_frame.pack(side=tk.BOTTOM, fill=tk.X)
         cancel_button.pack(side=tk.LEFT, padx=10, pady=10)
         submit_button.pack(side=tk.RIGHT, padx=10, pady=10)
@@ -560,15 +569,28 @@ class BookHuntGUI:
         print(review_content)
         tk.Label(entry_frame, text=f"review 1: {review_content}", font=("Arial", 12, "bold")).pack(side=tk.TOP)
 
-    def apply_edit(self, text_fields, window) :
+    def apply_edit(self, text_fields, window, frame) :
         """get the new attributes from the given entry field references, apply the edit"""
 
+        #clear frame, just in case
+        for widget in frame.winfo_children():
+            widget.destroy()
         #create list to hold the text to be used for constructing query
         new_attributes = []
 
         #loop through text references to get the input text
         for field in text_fields :
             new_attributes.append(field.get())
+
+        #validate that the user has at least entered a title and author
+        if new_attributes[0] == "" or new_attributes[1] == "":
+            tk.Label(frame, text="Must have a title and an author!").pack()
+            return
+
+        # validate that the user has a valid book status
+        if not (new_attributes[4].lower() == "to read" or new_attributes[4].lower() == "currently reading" or new_attributes[4].lower() == "completed"):
+            tk.Label(frame, text="Must have a valid status!").pack()
+            return
 
         #call database function to edit the entry with these new attributes
         self.db.update_book(new_attributes, self.sel_book_id, False)
