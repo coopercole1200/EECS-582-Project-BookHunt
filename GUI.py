@@ -16,15 +16,203 @@ import os
 from dotenv import load_dotenv
 
 from database import DatabaseBackend
+# ─────────────────────────────────────────────────────────────────────────────
+# Colour constants (keep consistent with the rest of the app)
+# ─────────────────────────────────────────────────────────────────────────────
+ACCENT      = "SlateBlue3"
+ACCENT_DARK = "SlateBlue4"
+BG          = "gray90"
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 2.2 – Sign-in / Register screen
+# ═════════════════════════════════════════════════════════════════════════════
+
+class SignInScreen:
+    """
+    Shown at launch.  The user must sign in (or register) before the main
+    BookHuntGUI is displayed.  Uses the same root window to avoid a second
+    Toplevel.
+    """
+
+    def __init__(self, root: tk.Tk, db: DatabaseBackend, on_success):
+        self.root       = root
+        self.db         = db
+        self.on_success = on_success   # callback(username) called after login
+
+        self.root.title("BookHunt – Sign In")
+        self.root.geometry("420x480")
+        self.root.resizable(False, False)
+
+        self._build()
+
+    # ------------------------------------------------------------------
+    # Build the sign-in UI
+    # ------------------------------------------------------------------
+
+    def _build(self):
+        self.frame = tk.Frame(self.root, bg=BG)
+        self.frame.pack(fill=tk.BOTH, expand=True)
+
+        # ── Header banner ──────────────────────────────────────────────
+        banner = tk.Frame(self.frame, bg=ACCENT, height=90)
+        banner.pack(fill=tk.X)
+        banner.pack_propagate(False)
+
+        tk.Label(
+            banner,
+            text="📚  BookHunt",
+            font=("Arial", 28, "bold"),
+            bg=ACCENT,
+            fg="white",
+        ).pack(expand=True)
+
+        # ── Card frame (centred) ───────────────────────────────────────
+        card = tk.Frame(self.frame, bg="white", relief="flat", bd=0)
+        card.place(relx=0.5, rely=0.52, anchor="center", width=340)
+
+        # Mode label ("Sign In" / "Create Account")
+        self._mode_var = tk.StringVar(value="Sign In")
+        self._mode_label = tk.Label(
+            card,
+            textvariable=self._mode_var,
+            font=("Arial", 17, "bold"),
+            bg="white",
+            fg=ACCENT_DARK,
+        )
+        self._mode_label.grid(row=0, column=0, columnspan=2,
+                              pady=(22, 14), padx=24, sticky="w")
+
+        # Username
+        tk.Label(card, text="Username", font=("Arial", 10),
+                 bg="white", fg="#444").grid(
+            row=1, column=0, columnspan=2, sticky="w", padx=24)
+
+        self._username_var = tk.StringVar()
+        username_entry = tk.Entry(
+            card, textvariable=self._username_var,
+            font=("Arial", 12), relief="solid", bd=1, width=28,
+        )
+        username_entry.grid(row=2, column=0, columnspan=2,
+                            padx=24, pady=(2, 10), ipady=5)
+        username_entry.bind("<Return>", lambda e: self._password_entry.focus())
+
+        # Password
+        tk.Label(card, text="Password", font=("Arial", 10),
+                 bg="white", fg="#444").grid(
+            row=3, column=0, columnspan=2, sticky="w", padx=24)
+
+        self._password_var = tk.StringVar()
+        self._password_entry = tk.Entry(
+            card, textvariable=self._password_var,
+            font=("Arial", 12), relief="solid", bd=1, width=28,
+            show="•",
+        )
+        self._password_entry.grid(row=4, column=0, columnspan=2,
+                                   padx=24, pady=(2, 4), ipady=5)
+        self._password_entry.bind("<Return>", lambda e: self._submit())
+
+        # Error / info message
+        self._msg_var = tk.StringVar()
+        self._msg_label = tk.Label(
+            card, textvariable=self._msg_var,
+            font=("Arial", 9), bg="white", fg="red",
+            wraplength=290, justify="left",
+        )
+        self._msg_label.grid(row=5, column=0, columnspan=2,
+                              padx=24, pady=(0, 6), sticky="w")
+
+        # Primary action button
+        self._btn_text = tk.StringVar(value="Sign In")
+        self._action_btn = tk.Button(
+            card,
+            textvariable=self._btn_text,
+            font=("Arial", 12, "bold"),
+            bg=ACCENT, fg="white", activebackground=ACCENT_DARK,
+            activeforeground="white", relief="flat", cursor="hand2",
+            command=self._submit,
+        )
+        self._action_btn.grid(row=6, column=0, columnspan=2,
+                              padx=24, pady=(4, 10), sticky="ew", ipady=7)
+
+        # Toggle link
+        toggle_frame = tk.Frame(card, bg="white")
+        toggle_frame.grid(row=7, column=0, columnspan=2, pady=(0, 22))
+
+        self._toggle_prompt = tk.StringVar(value="Don't have an account?")
+        tk.Label(toggle_frame, textvariable=self._toggle_prompt,
+                 font=("Arial", 9), bg="white", fg="#555").pack(side=tk.LEFT)
+
+        self._toggle_link_text = tk.StringVar(value=" Register")
+        toggle_link = tk.Label(
+            toggle_frame, textvariable=self._toggle_link_text,
+            font=("Arial", 9, "underline"), bg="white",
+            fg=ACCENT_DARK, cursor="hand2",
+        )
+        toggle_link.pack(side=tk.LEFT)
+        toggle_link.bind("<Button-1>", lambda e: self._toggle_mode())
+
+        # Track which mode we're in
+        self._is_register = False
+
+        # Focus username field
+        username_entry.focus()
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _toggle_mode(self):
+        self._is_register = not self._is_register
+        self._msg_var.set("")
+
+        if self._is_register:
+            self._mode_var.set("Create Account")
+            self._btn_text.set("Register")
+            self._toggle_prompt.set("Already have an account?")
+            self._toggle_link_text.set(" Sign In")
+        else:
+            self._mode_var.set("Sign In")
+            self._btn_text.set("Sign In")
+            self._toggle_prompt.set("Don't have an account?")
+            self._toggle_link_text.set(" Register")
+
+    def _submit(self):
+        username = self._username_var.get().strip()
+        password = self._password_var.get()
+
+        if not username or not password:
+            self._msg_var.set("Please fill in both fields.")
+            return
+
+        if self._is_register:
+            ok, msg = self.db.register_user(username, password)
+            if ok:
+                # Auto-login after successful registration
+                self.db.login_user(username, password)
+                self._proceed()
+            else:
+                self._msg_var.set(msg)
+        else:
+            ok, msg = self.db.login_user(username, password)
+            if ok:
+                self._proceed()
+            else:
+                self._msg_var.set(msg)
+
+    def _proceed(self):
+        """Tear down this screen and launch the main application."""
+        self.frame.destroy()
+        self.on_success(self.db.current_username)
 
 class BookHuntGUI:    
-    def __init__(self, root):
+    def __init__(self, root, db):
         self.root = root
         self.root.title("BookHunt")
         self.root.geometry("900x800")
         
         # Initialize database
-        self.db = DatabaseBackend()
+        self.db = db
 
         #Initializes tags for filtering
         self._tag_id_map = {}
@@ -57,6 +245,25 @@ class BookHuntGUI:
             fg="white"
         )
         title_label.pack(expand=True)
+
+        right_header = tk.Frame(title_frame, bg=ACCENT)
+        right_header.pack(side=tk.RIGHT, padx=16)
+
+        tk.Label(
+            right_header,
+            text=f"👤  {self.db.current_username}",
+            font=("Arial", 11),
+            bg=ACCENT, fg="white",
+        ).pack(anchor="e")
+
+        tk.Button(
+            right_header,
+            text="Log Out",
+            font=("Arial", 9),
+            bg="white", fg=ACCENT_DARK,
+            relief="flat", cursor="hand2",
+            command=self._logout,
+        ).pack(anchor="e", pady=(2, 0))
 
         ### Frame Structure ###
         main_frame = tk.Frame(self.root)
@@ -151,11 +358,11 @@ class BookHuntGUI:
         tk.Label(creation_frame, text="Status:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
         self.create_status_dropdown = ttk.Combobox(
             creation_frame,
-            values=["to-read", "completed", "currently reading"],
+            values=["to read", "completed", "currently reading"],
             width=15,
             state="readonly"
         )
-        self.create_status_dropdown.set("to-read")
+        self.create_status_dropdown.set("to read")
         self.create_status_dropdown.pack(side=tk.LEFT, padx=5)
 
         # Tag entry row #
@@ -379,9 +586,9 @@ class BookHuntGUI:
                 self.info_label.config(text="Rating must be a number (e.g., 4 or 4.5).")
                 return
 
-        status = self.create_status_dropdown.get().strip() if hasattr(self, "create_status_dropdown") else "to-read"
+        status = self.create_status_dropdown.get().strip() if hasattr(self, "create_status_dropdown") else "to read"
         if status == "":
-            status = "to-read"
+            status = "to read"
 
         # Create in DB using user-provided values
         self.db.create_book(title, author, genre, year, rating, status)
@@ -404,7 +611,7 @@ class BookHuntGUI:
         if hasattr(self, "rating_entry"):
             self.rating_entry.delete(0, tk.END)
         if hasattr(self, "create_status_dropdown"):
-            self.create_status_dropdown.set("to-read")
+            self.create_status_dropdown.set("to read")
 
         self.refresh_genre_dropdown()
         self.refresh_tag_dropdown()
@@ -504,10 +711,16 @@ class BookHuntGUI:
         author_field.insert(0, old_attributes["author"])
         tk.Label(entry_frame, text="Enter Book Genre:").pack(anchor="w")
         genre_field.pack(anchor="w", fill=tk.X, ipadx=100)
-        genre_field.insert(0, old_attributes["genre"])
+        if (old_attributes["genre"] is not None):
+            genre_field.insert(0, old_attributes["genre"])
+        else:
+            genre_field.insert(0, "")
         tk.Label(entry_frame, text="Enter Year Published:").pack(anchor="w")
         year_field.pack(anchor="w", fill=tk.X, ipadx=100)
-        year_field.insert(0, old_attributes["year"])
+        if (old_attributes["year"] is not None) :
+            year_field.insert(0, old_attributes["year"])
+        else :
+            year_field.insert(0, "")
         tk.Label(entry_frame, text="Enter Reading Status:").pack(anchor="w")
         status_field.pack(anchor="w")
         status_field.set(old_attributes["status"])
@@ -591,6 +804,16 @@ class BookHuntGUI:
         if not (new_attributes[4].lower() == "to read" or new_attributes[4].lower() == "currently reading" or new_attributes[4].lower() == "completed"):
             tk.Label(frame, text="Must have a valid status!").pack()
             return
+
+        if not (new_attributes[3].isdigit()) and not (new_attributes[3] == "") :
+            tk.Label(frame, text="Year must be a number or left empty").pack()
+            return
+
+        if new_attributes[2] == "" :
+            new_attributes[2] = None
+        if new_attributes[3] == "" :
+            new_attributes[3] = None
+
 
         #call database function to edit the entry with these new attributes
         self.db.update_book(new_attributes, self.sel_book_id, False)
@@ -1095,11 +1318,29 @@ class BookHuntGUI:
             self.agent_text.insert("1.0", completion.choices[0].message.content, "center")
             client.close()
 
+    def _logout(self):
+        """Log out and return to the sign-in screen."""
+        self.db.logout_user()
+        for widget in self.root.winfo_children():
+            widget.destroy()
+        self.root.geometry("420x480")
+        # Pass a closure so the callback captures root/db without globals
+        _show_signin(self.root, self.db)
+
+def _show_signin(root: tk.Tk, db: DatabaseBackend):
+    """Display the sign-in screen and wire it to launch the main app."""
+    def on_success(username: str):
+        root.geometry("900x900")
+        BookHuntGUI(root, db)
+
+    SignInScreen(root, db, on_success)
+
+
 def main():
     root = tk.Tk()
-    app = BookHuntGUI(root)
+    db   = DatabaseBackend()
+    _show_signin(root, db)
     root.mainloop()
-
 
 if __name__ == "__main__":
     main()
