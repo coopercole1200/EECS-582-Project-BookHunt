@@ -8,8 +8,10 @@ Last Modified by: Ebraheem AlAamer
 """
 
 import tkinter as tk
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
 import webbrowser
-from tkinter import ttk
+#from tkinter import ttk
 from urllib.parse import quote
 from openai import OpenAI
 import os
@@ -61,7 +63,7 @@ class SignInScreen:
 
         tk.Label(
             banner,
-            text="📚  BookHunt",
+            text="📚  BookHunt  📚",
             font=("Arial", 28, "bold"),
             bg=ACCENT,
             fg="white",
@@ -233,43 +235,41 @@ class BookHuntGUI:
 
     def setup_ui(self):
         ### Title ###
-        title_frame = tk.Frame(self.root, bg="SlateBlue3", height=80)
+        title_frame = ttk.Frame(self.root, bootstyle='primary', height=120)
         title_frame.pack(fill=tk.X)
         title_frame.pack_propagate(False)
         
-        title_label = tk.Label(
+        title_label = ttk.Label(
             title_frame, 
-            text="BookHunt", 
-            font=("Arial", 24, "bold"),
-            bg="SlateBlue3",
-            fg="white"
+            text="📚  BookHunt  📚", 
+            font=("Arial", 36, "bold"),
+            bootstyle='inverse-primary'
         )
         title_label.pack(expand=True)
 
-        right_header = tk.Frame(title_frame, bg=ACCENT)
+        right_header = ttk.Frame(title_frame, bootstyle='primary')
         right_header.pack(side=tk.RIGHT, padx=16)
 
-        tk.Label(
+        ttk.Label(
             right_header,
             text=f"👤  {self.db.current_username}",
             font=("Arial", 11),
-            bg=ACCENT, fg="white",
+            bootstyle='inverse-primary'
         ).pack(anchor="e")
 
-        tk.Button(
+        ttk.Button(
             right_header,
             text="Log Out",
-            font=("Arial", 9),
-            bg="white", fg=ACCENT_DARK,
-            relief="flat", cursor="hand2",
+            cursor='hand2',
+            bootstyle='danger',
             command=self._logout,
-        ).pack(anchor="e", pady=(2, 0))
+        ).pack(anchor="e", padx=5, pady=(2, 4))
 
         ### Frame Structure ###
         main_frame = tk.Frame(self.root)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        notebook = ttk.Notebook(main_frame)
+        notebook = ttk.Notebook(main_frame, bootstyle="light")
         notebook.pack(fill=tk.BOTH, expand=True)
 
         ## TAB 1 ##
@@ -281,11 +281,14 @@ class BookHuntGUI:
         searching_frame.pack(fill=tk.X, pady=5)
         self.search_field = tk.Entry(searching_frame)
         self.search_field.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10)
-        search_button = tk.Button(searching_frame, text="Search for Title", command=self.search_book)
+        search_button = ttk.Button(searching_frame, text="Search for Title", cursor="hand2", bootstyle='primary', command=self.search_book)
         search_button.pack(side=tk.LEFT, padx=(0, 6), pady=8)
 
+        options_outer = ttk.Labelframe(tab1, text=" Advanced Search Options ", bootstyle='primary')
+        options_outer.pack(fill=tk.X, padx=10, pady=(6, 2))
+        
         # Filters #
-        filter_frame = tk.Frame(tab1, bg="gray90")
+        filter_frame = tk.Frame(options_outer, bg="gray90")
         filter_frame.pack(fill=tk.X)
 
         # Status Filter #
@@ -308,56 +311,66 @@ class BookHuntGUI:
         self.tag_dropdown.pack(side=tk.LEFT, padx=5)
  
         # Apply / Clear buttons #
-        apply_filter_button = tk.Button(filter_frame, text="Apply Filter(s)", command=self.apply_filters)
+        apply_filter_button = ttk.Button(filter_frame, text="Apply Filter(s)", cursor='hand2', bootstyle='dark-outline', command=self.apply_filters)
         apply_filter_button.pack(side=tk.LEFT, padx=10)
-        clear_filter_button = tk.Button(filter_frame, text="Clear Filters", command=self.clear_filters)
+        clear_filter_button = ttk.Button(filter_frame, text="Clear Filters", cursor='hand2', bootstyle='warning-outline', command=self.clear_filters)
         clear_filter_button.pack(side=tk.LEFT)
 
         # Sorting options frame #
-        sorting_frame = tk.Frame(tab1, bg="gray90")
+        sorting_frame = tk.Frame(options_outer, bg="gray90")
         sorting_frame.pack(fill=tk.X, pady=5)
         tk.Label(sorting_frame, text="Sort by:", bg="gray90").pack(side=tk.LEFT, padx=5)
         self.sorting_dropdown = ttk.Combobox(sorting_frame, values=["id", "title", "author", "genre", "year", "status"], width=15, state="readonly")
         self.sorting_dropdown.set("id")
         self.sorting_dropdown.pack(side=tk.LEFT, padx=5)
 
-        sorting_button = tk.Button(sorting_frame, text="Apply Sorting", command=self.apply_sorting)
+        sorting_button = ttk.Button(sorting_frame, text="Apply Sorting", cursor='hand2', bootstyle='dark-outline', command=self.apply_sorting)
         sorting_button.pack(side=tk.LEFT, padx=10)
 
         ## Tab 2 ##
         tab2 = tk.Frame(notebook, bg="gray90")
         notebook.add(tab2, text="Add")
 
+        creation_outer = ttk.Labelframe(tab2, text=" Add to Book Collection ", bootstyle='primary')
+        creation_outer.pack(fill=tk.X, padx=10, pady=(6, 2))
+
         # Add create book button field #
-        creation_frame = tk.Frame(tab2, bg="gray90")
+        creation_frame = tk.Frame(creation_outer, bg="gray90")
         creation_frame.pack(fill=tk.X, pady=5)
-        create_book_button = tk.Button(creation_frame, text="Create a Book Entry", command=self.create_book)
-        create_book_button.pack(side=tk.LEFT, padx=10)
+
+        row1 = ttk.Frame(creation_frame)
+        row1.pack(fill=tk.X)
+
+        row2 = ttk.Frame(creation_frame)
+        row2.pack(fill=tk.X, pady=(5, 0))
+        
+        row3 = ttk.Frame(creation_frame)
+        row3.pack(fill=tk.X, pady=(5, 0))
 
         # --- Book attribute input fields (used by Create a Book Entry) --- #
-        tk.Label(creation_frame, text="Title:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2))
-        self.title_entry = tk.Entry(creation_frame, width=15)
+        tk.Label(row1, text="Title:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2))
+        self.title_entry = tk.Entry(row1, width=15)
         self.title_entry.pack(side=tk.LEFT, padx=5)
 
-        tk.Label(creation_frame, text="Author:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
-        self.author_entry = tk.Entry(creation_frame, width=15)
+        tk.Label(row1, text="Author:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
+        self.author_entry = tk.Entry(row1, width=15)
         self.author_entry.pack(side=tk.LEFT, padx=5)
 
-        tk.Label(creation_frame, text="Genre:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
-        self.genre_entry = tk.Entry(creation_frame, width=12)
+        tk.Label(row1, text="Genre:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
+        self.genre_entry = tk.Entry(row1, width=12)
         self.genre_entry.pack(side=tk.LEFT, padx=5)
 
-        tk.Label(creation_frame, text="Year:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
-        self.year_entry = tk.Entry(creation_frame, width=6)
+        tk.Label(row1, text="Year:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
+        self.year_entry = tk.Entry(row1, width=6)
         self.year_entry.pack(side=tk.LEFT, padx=5)
 
-        tk.Label(creation_frame, text="Rating:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
-        self.rating_entry = tk.Entry(creation_frame, width=6)
+        tk.Label(row2, text="Rating:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2))
+        self.rating_entry = tk.Entry(row2, width=6)
         self.rating_entry.pack(side=tk.LEFT, padx=5)
 
-        tk.Label(creation_frame, text="Status:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
+        tk.Label(row2, text="Status:", bg="gray90").pack(side=tk.LEFT, padx=(0, 2))
         self.create_status_dropdown = ttk.Combobox(
-            creation_frame,
+            row2,
             values=["to read", "completed", "currently reading"],
             width=15,
             state="readonly"
@@ -365,28 +378,34 @@ class BookHuntGUI:
         self.create_status_dropdown.set("to read")
         self.create_status_dropdown.pack(side=tk.LEFT, padx=5)
 
+        create_book_button = ttk.Button(creation_frame, text="Create a Book Entry", bootstyle='primary', command=self.create_book)
+        create_book_button.pack(side=tk.LEFT, pady=10, padx=10)
+
         # Tag entry row #
         tag_entry_frame = tk.Frame(tab2, bg="gray90")
         tag_entry_frame.pack(fill=tk.X)
-        tk.Label(tag_entry_frame, text="Tags:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2))
-        self.pending_tag_entry = tk.Entry(tag_entry_frame, width=20)
+        tk.Label(row3, text="Tags:", bg="gray90").pack(side=tk.LEFT, padx=(10, 2))
+        self.pending_tag_entry = tk.Entry(row3, width=20)
         self.pending_tag_entry.pack(side=tk.LEFT, padx=5)
         self.pending_tag_entry.bind("<Return>", lambda e: self._add_pending_tag())
-        tk.Button(tag_entry_frame, text="Add Tag", command=self._add_pending_tag).pack(side=tk.LEFT)
-        self.pending_tags_label = tk.Label(tag_entry_frame, text="No tags added yet.", bg="gray90", fg="gray50")
+        ttk.Button(row3, text="Add Tag", bootstyle='dark-outline', command=self._add_pending_tag).pack(side=tk.LEFT)
+        self.pending_tags_label = tk.Label(row3, text="No tags added yet.", bg="gray90", fg="gray50")
         self.pending_tags_label.pack(side=tk.LEFT, padx=10)
 
         ## Tab 3 ##
         tab3 = tk.Frame(notebook, bg="gray90")
         notebook.add(tab3, text="Review")
 
+        review_outer = ttk.Labelframe(tab3, text=" Current Review of Selected Book ", bootstyle='primary')
+        review_outer.pack(fill=tk.X, padx=10, pady=(6, 2))
+
         # setup review frame; actual review display is setup further down after treeview setup #
-        self.review_frame = tk.Frame(tab3)
+        self.review_frame = tk.Frame(review_outer)
         self.review_frame.pack(fill=tk.X, pady=10)
-        tk.Label(self.review_frame, text="Current Review", font=("Arial", 16, "underline")).pack(side=tk.TOP)
+        #tk.Label(self.review_frame, text="Current Review", font=("Arial", 16, "underline")).pack(side=tk.TOP)
         self.review_content = tk.Label(
             self.review_frame,
-            text="no reviews",
+            text="No review yet.",
             font=("Arial", 14),
             bg="SlateBlue2",
             fg="white"
@@ -397,40 +416,44 @@ class BookHuntGUI:
         # adds/edits to reviews made through this Entry #
         selectedStarValue = tk.IntVar(value=0)
 
+        ttk.Label(
+            self.review_frame,
+            text="Enter Review: ",
+            bootstyle='default'
+        ).pack(side=tk.LEFT, padx=(10, 5))
         self.review_entry = tk.Entry(self.review_frame)
         self.review_stars = tk.Frame(self.review_frame)
-        update_review_button = tk.Button(self.review_frame, text="Add/Update Review", command=lambda: self.update_review(selectedStarValue))
-        delete_review_button = tk.Button(self.review_frame, text="Delete Review", command=lambda: self.delete_review())
+        update_review_button = ttk.Button(self.review_frame, text="Add/Update Review", cursor='hand2', bootstyle='primary', command=lambda: self.update_review(selectedStarValue))
+        delete_review_button = ttk.Button(self.review_frame, text="Delete Review", cursor='hand2', bootstyle='warning-outline', command=lambda: self.delete_review())
 
-        update_review_button.pack(side=tk.LEFT, padx=(0, 20))
         self.review_entry.pack(side=tk.LEFT)
+        ttk.Label(
+            self.review_frame,
+            text="Enter Rating (out of 5): ",
+            bootstyle='default'
+        ).pack(side=tk.LEFT, padx=(10, 5))
         self.review_stars.pack(side=tk.LEFT, padx=(5, 0))
         starButtons = [("0", 0), ("1", 1), ("2", 2), ("3", 3), ("4", 4), ("5", 5)]
         for i, (text, val) in enumerate(starButtons):
-            tk.Radiobutton(self.review_stars, text=text, variable=selectedStarValue, value=val).grid(row=0, column=i, padx=5)
+            ttk.Radiobutton(self.review_stars, text=text, variable=selectedStarValue, value=val).grid(row=0, column=i, padx=5)
 
-        delete_review_button.pack(side=tk.LEFT)
+        update_review_button.pack(side=tk.LEFT, padx=(10, 0))
+        delete_review_button.pack(side=tk.LEFT, padx=(10, 0))
 
         ## TAB 4 ##
         tab4 = tk.Frame(notebook, bg="gray90")
         notebook.add(tab4, text="Hunt!")
 
         # Ask for agent recommendation button
-        agent_access_frame = tk.Frame(tab4, bg="gray90")
+        agent_outer = ttk.Labelframe(tab4, text=" Get Book Recomendations ", bootstyle='primary')
+        agent_outer.pack(fill=tk.X, padx=10, pady=(6, 2))
+        agent_access_frame = tk.Frame(agent_outer, bg="gray90")
         agent_access_frame.pack(fill=tk.X, ipady=5)
-        agent_access_button = tk.Button(agent_access_frame, text="Get a Book Recommendation?", command=self.recommendation_agent_toplevel)
+        agent_access_button = ttk.Button(agent_access_frame, text="Hunt!", cursor='hand2', bootstyle='primary', command=self.recommendation_agent_toplevel)
         agent_access_button.pack(side=tk.LEFT, padx=10, pady=5)
 
         # ── Requirement 34: Check Book Availability at a Bookstore ─────────────
-        avail_outer = tk.LabelFrame(
-            tab4,
-            text=" Check Book Availability at a Bookstore ",
-            bg="gray90",
-            font=("Arial", 10, "bold"),
-            fg="SlateBlue4",
-            relief=tk.GROOVE,
-            bd=2,
-        )
+        avail_outer = ttk.Labelframe(tab4, text=" Check Book Availability at a Bookstore ", bootstyle='primary')
         avail_outer.pack(fill=tk.X, padx=10, pady=(6, 2))
 
         # Row 1 – "Specify book" entry (sub-requirement iii)
@@ -448,9 +471,11 @@ class BookHuntGUI:
         self.avail_book_entry.pack(side=tk.LEFT, padx=(0, 6))
 
         # Button: auto-fill from selected tree row
-        tk.Button(
+        ttk.Button(
             book_specify_row,
             text="Use Selected Book",
+            cursor='hand2',
+            bootstyle='dark-outline',
             command=self._autofill_availability_book,
         ).pack(side=tk.LEFT, padx=(0, 4))
 
@@ -463,32 +488,22 @@ class BookHuntGUI:
         self.location_entry.pack(side=tk.LEFT, padx=(0, 8))
 
         # i. Get bookstores from Google Maps
-        find_bookstores_button = tk.Button(
+        find_bookstores_button = ttk.Button(
             maps_row,
             text="🗺  Find Nearby Bookstores (Google Maps)",
+            cursor='hand2',
+            bootstyle='primary',
             command=self.find_nearby_bookstores,
-            bg="SlateBlue3",
-            fg="white",
-            activebackground="SlateBlue4",
-            activeforeground="white",
-            relief=tk.FLAT,
-            padx=8,
-            pady=3,
         )
         find_bookstores_button.pack(side=tk.LEFT, padx=(0, 10))
 
         # ii. Search sites for book
-        search_sites_button = tk.Button(
+        search_sites_button = ttk.Button(
             maps_row,
             text="🔍  Search Sites for This Book",
+            cursor='hand2',
+            bootstyle='primary',
             command=self.search_book_availability_sites,
-            bg="SlateBlue3",
-            fg="white",
-            activebackground="SlateBlue4",
-            activeforeground="white",
-            relief=tk.FLAT,
-            padx=8,
-            pady=3,
         )
         search_sites_button.pack(side=tk.LEFT)
         # ── End Requirement 34 ───────────────────────────────────────────────
@@ -692,36 +707,38 @@ class BookHuntGUI:
         entry_frame = tk.Frame(edit_window)
         entry_frame.pack(fill=tk.BOTH, expand=True)
 
+        entry_outer = ttk.Labelframe(entry_frame, text=" Enter New Attributes for Book ", bootstyle='primary')
+        entry_outer.pack(fill=tk.X, padx=10, pady=(6, 2))
         #create a label giving user interaction instructions
-        tk.Label(entry_frame, text="Enter New Attributes for Book", font=("Arial", 20, "bold")).pack(side=tk.TOP)
+        #tk.Label(entry_frame, text="Enter New Attributes for Book", font=("Arial", 20, "bold")).pack(side=tk.TOP)
 
         #create the entry fields
-        title_field = tk.Entry(entry_frame)
-        author_field = tk.Entry(entry_frame)
-        genre_field = tk.Entry(entry_frame)
-        year_field = tk.Entry(entry_frame)
-        status_field = ttk.Combobox(entry_frame, values=["To Read", "Currently Reading", "Completed"])
+        title_field = tk.Entry(entry_outer)
+        author_field = tk.Entry(entry_outer)
+        genre_field = tk.Entry(entry_outer)
+        year_field = tk.Entry(entry_outer)
+        status_field = ttk.Combobox(entry_outer, values=["To Read", "Currently Reading", "Completed"])
 
         #give the entry fields labels and actually pack them
-        tk.Label(entry_frame, text="Enter Book Title:").pack(anchor="w")
+        tk.Label(entry_outer, text="Enter Book Title:").pack(anchor="w")
         title_field.pack(anchor="w", fill=tk.X, ipadx=100)
         title_field.insert(0, old_attributes["title"])
-        tk.Label(entry_frame, text="Enter Author Name:").pack(anchor="w")
+        tk.Label(entry_outer, text="Enter Author Name:").pack(anchor="w")
         author_field.pack(anchor="w", fill=tk.X, ipadx=100)
         author_field.insert(0, old_attributes["author"])
-        tk.Label(entry_frame, text="Enter Book Genre:").pack(anchor="w")
+        tk.Label(entry_outer, text="Enter Book Genre:").pack(anchor="w")
         genre_field.pack(anchor="w", fill=tk.X, ipadx=100)
         if (old_attributes["genre"] is not None):
             genre_field.insert(0, old_attributes["genre"])
         else:
             genre_field.insert(0, "")
-        tk.Label(entry_frame, text="Enter Year Published:").pack(anchor="w")
+        tk.Label(entry_outer, text="Enter Year Published:").pack(anchor="w")
         year_field.pack(anchor="w", fill=tk.X, ipadx=100)
         if (old_attributes["year"] is not None) :
             year_field.insert(0, old_attributes["year"])
         else :
             year_field.insert(0, "")
-        tk.Label(entry_frame, text="Enter Reading Status:").pack(anchor="w")
+        tk.Label(entry_outer, text="Enter Reading Status:").pack(anchor="w")
         status_field.pack(anchor="w")
         status_field.set(old_attributes["status"])
 
@@ -734,8 +751,8 @@ class BookHuntGUI:
 
         #create the frame where the buttons show up, create the buttons, and then finally pack the frame and buttons
         button_frame = tk.Frame(edit_window, bg="gray90")
-        cancel_button = tk.Button(button_frame, text="Cancel Edit", command=edit_window.destroy) #If not applying edit, simply destroy the window, no change
-        submit_button = tk.Button(button_frame, text="Apply Edit", command=lambda: self.apply_edit(text_field_references, edit_window, warning_frame)) #Apply edit, destroy window afterward
+        cancel_button = ttk.Button(button_frame, text="Cancel Edit", cursor='hand2', bootstyle='warning', command=edit_window.destroy) #If not applying edit, simply destroy the window, no change
+        submit_button = ttk.Button(button_frame, text="Apply Edit", cursor='hand2', bootstyle='primary', command=lambda: self.apply_edit(text_field_references, edit_window, warning_frame)) #Apply edit, destroy window afterward
         button_frame.pack(side=tk.BOTTOM, fill=tk.X)
         cancel_button.pack(side=tk.LEFT, padx=10, pady=10)
         submit_button.pack(side=tk.RIGHT, padx=10, pady=10)
@@ -1080,21 +1097,23 @@ class BookHuntGUI:
         agent_window.grab_set()
 
         #Select type of recommendation
-        tk.Label(agent_window, text="What would you like your recommendation based off of?").pack(side="top")
-        type_frame = tk.Frame(agent_window)
+        based_outer = ttk.Labelframe(agent_window, text=" Initial Screening ", bootstyle='primary')
+        based_outer.pack(fill=tk.X, padx=10, pady=(6, 2))
+        tk.Label(based_outer, text="What would you like your recommendation based off of?").pack(side="top")
+        type_frame = tk.Frame(based_outer)
         type_frame.pack(fill=tk.X)
         type_selection = tk.IntVar(value=5)
         typeButtons = [("Book(s)", 0), ("Genre(s)", 1), ("Tag(s)", 2)]
         for i, (text, val) in enumerate(typeButtons):
-            tk.Radiobutton(type_frame, text=text, variable=type_selection, value=val).grid(row=i, column=0, sticky="W")
+            ttk.Radiobutton(type_frame, text=text, variable=type_selection, value=val, bootstyle='primary').grid(row=i, column=0, sticky="W")
 
         #Frame for the button to enter initial selection of recommendation type
-        button_frame = tk.Frame(agent_window)
+        button_frame = tk.Frame(based_outer)
         button_frame.pack(fill=tk.X)
 
         #Frame for opting in to AI agent interaction
-        opt_in_frame = tk.Frame(agent_window)
-        opt_in_frame.pack(fill=tk.X)
+        opt_in_frame = tk.Frame(based_outer)
+        opt_in_frame.pack(fill=tk.X, pady=5)
 
         #After selecting type of recommendation, further specification between "all" or "specific entry" appears in this frame
         #this will be done in the specify_recommendation function
@@ -1104,12 +1123,12 @@ class BookHuntGUI:
         dynamic_frame.pack(fill=tk.X, pady=5)
 
         #Button for moving to second stage of recommendation specification
-        get_recommendation_button = tk.Button(button_frame, text="Next", command = lambda : self.specify_recommendation(type_selection, dynamic_frame, label_frame))
+        get_recommendation_button = ttk.Button(button_frame, text="Next", cursor='hand2', bootstyle='primary-outline', command = lambda : self.specify_recommendation(type_selection, dynamic_frame, label_frame))
         get_recommendation_button['state'] = 'disabled'
         get_recommendation_button.pack()
         self.check_var = tk.BooleanVar()
         self.check_var.set(0)
-        opt_in_button = tk.Checkbutton(opt_in_frame, text="Opt-in to sharing your stored book data with an AI Agent?", variable=self.check_var, command=lambda: self.toggle_agent(get_recommendation_button))
+        opt_in_button = ttk.Checkbutton(opt_in_frame, text="Opt-in to sharing your stored book data with an AI Agent?", bootstyle='primary', variable=self.check_var, command=lambda: self.toggle_agent(get_recommendation_button))
         opt_in_button.pack()
 
         #This is where the recommendation agent text will appear
@@ -1206,8 +1225,8 @@ class BookHuntGUI:
 
                 tree.insert("", tk.END, values=values, tags=(tag,))
 
-            query_button = tk.Button(frame, text="Get Recommendation from Selection", command=lambda : self.model_query_genres(tree))
-            query_button.pack()
+            query_button = ttk.Button(frame, text="Get Recommendation from Selection", cursor='hand2', bootstyle='primary', command=lambda : self.model_query_genres(tree))
+            query_button.pack(pady=5)
             return
 
         # Get recommendation from specific tag(s)
@@ -1338,6 +1357,7 @@ def _show_signin(root: tk.Tk, db: DatabaseBackend):
 
 def main():
     root = tk.Tk()
+    style = ttk.Style(theme='pulse')
     db   = DatabaseBackend()
     _show_signin(root, db)
     root.mainloop()
