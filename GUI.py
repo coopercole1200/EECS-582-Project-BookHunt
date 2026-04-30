@@ -71,7 +71,7 @@ class BookHuntGUI:
 
         self.review_entry = tk.Entry(self.review_frame)
         self.review_stars = tk.Frame(self.review_frame)
-        update_review_button = tk.Button(self.review_frame, text="Add/Update Review", command=lambda: self.update_review(selectedStarValue))
+        update_review_button = tk.Button(self.review_frame, text="Add/Update Review", command=lambda: self.create_review())
         delete_review_button = tk.Button(self.review_frame, text="Delete Review", command=lambda: self.delete_review())
 
         update_review_button.pack(side=tk.LEFT, padx=(0, 20))
@@ -87,6 +87,7 @@ class BookHuntGUI:
         self.tree_menu = tk.Menu(self.root, tearoff=0)
         self.tree_menu.add_command(label="Delete Book", command=self.delete_book)
         self.tree_menu.add_command(label="Edit Book", command=self.edit_book_toplevel)
+        self.tree_menu.add_command(label="Add Review", command=self.add_review)
 
         # Add create book button field
         creation_frame = tk.Frame(self.root, bg="gray90")
@@ -334,10 +335,25 @@ class BookHuntGUI:
         self.clear_treeview()
         self.load_books(self.db.get_all_books(self.sorting_dropdown.get()))
 
-    def update_review(self, rating):
-        new = self.review_entry.get()
-        updatedRating = str(rating.get())
-        
+
+    # THESE METHODS ARE UNSTABLE AND IM SCARED
+    def create_review(self):
+        """user creates a new review"""
+        new_title = "TODO"
+        new_review = self.review_entry.get() # our Entry widget
+
+        selected = self.tree.selection()[0]
+        if not selected:
+            return
+    
+        self.sel_book_id = int(self.tree.item(selected, "values")[0])
+        self.db.create_review(self.sel_book_id, new_title, new_review)
+
+    def update_review(self):
+        """user updates a review"""
+        new_title = "TODO"
+        new_review = self.review_entry.get()
+
         # for now it just will take the first book selected, im not sure how selecting
         # a lot of books will affect the UI yet
         selected = self.tree.selection()[0]
@@ -348,34 +364,111 @@ class BookHuntGUI:
             return
 
         self.sel_book_id = self.tree.item(selected, "values")[0]
-        self.db.update_review(self.sel_book_id, new)
-        self.db.update_book([updatedRating], self.sel_book_id, True) # This works, you just have to refresh the tree view to see updated rating
-        book_review = self.db.get_specific_book(self.sel_book_id)[6]
+        print(self.sel_book_id)
+        self.db.update_review(self.sel_book_id, new_title, new_review)
 
-        if not book_review:
-            book_review = "No review yet."
-
-        self.review_content.config(text=book_review)
+        # if not self.book_reviews:
+        #     book_review = "No review yet."
+        # else:
+        #     book_review = self.book_reviews[0]["review_content"]
+        #
+        # self.review_content.config(text=book_review)
 
     def delete_review(self):
-        # for now it just will take the first book selected, im not sure how selecting
-        # a lot of books will affect the UI yet
+        # not working right now
         selected = self.tree.selection()[0]
-
-        # there may be a case where all books are unselected? im not sure and i dont
-        # really care to test it right now
         if not selected:
             return
 
-        self.sel_book_id = self.tree.item(selected, "values")[0]
-        self.db.delete_review(self.sel_book_id)
+        # print(self.book_reviews)
+        # print(str(self.current_review_id))
+        # self.db.delete_review(str(self.current_review_id))
+        # self.review_content.config(text="review deleted!")
 
-        book_review = self.db.get_specific_book(self.sel_book_id)[6]
+    # def update_review(self, rating):
+    #     new = self.review_entry.get()
+    #     updatedRating = str(rating.get())
+    #     
+    #     # for now it just will take the first book selected, im not sure how selecting
+    #     # a lot of books will affect the UI yet
+    #     selected = self.tree.selection()[0]
+    #
+    #     # there may be a case where all books are unselected? im not sure and i dont
+    #     # really care
+    #     if not selected:
+    #         return
+    #
+    #     self.sel_book_id = self.tree.item(selected, "values")[0]
+    #     self.db.update_review(self.sel_book_id, new)
+    #     self.db.update_book([updatedRating], self.sel_book_id, True) # This works, you just have to refresh the tree view to see updated rating
+    #     book_review = self.db.get_specific_book(self.sel_book_id)[6]
+    #
+    #     if not book_review:
+    #         book_review = "No review yet."
+    #
+    #     self.review_content.config(text=book_review)
+    #
+    # def delete_review(self):
+    #     # for now it just will take the first book selected, im not sure how selecting
+    #     # a lot of books will affect the UI yet
+    #     selected = self.tree.selection()[0]
+    #
+    #     # there may be a case where all books are unselected? im not sure and i dont
+    #     # really care to test it right now
+    #     if not selected:
+    #         return
+    #
+    #     self.sel_book_id = self.tree.item(selected, "values")[0]
+    #     self.db.delete_review(self.sel_book_id)
+    #
+    #     book_review = self.db.get_specific_book(self.sel_book_id)[6]
+    #
+    #     if not book_review:
+    #         book_review = "No review yet."
+    #
+    #     self.review_content.config(text=book_review)
 
-        if not book_review:
-            book_review = "No review yet."
+    def add_review(self):
+        #create the pop-up window, force focus onto it, and prevent user from interacting with main window while pop-up is up
+        edit_window = tk.Toplevel(self.root)
+        edit_window.title("Edit Book Entity")
+        edit_window.geometry("500x450")
+        edit_window.attributes('-topmost', True)
+        edit_window.focus_force()
+        edit_window.grab_set()
+        
+        #create the frame where the entry fields will be
+        entry_frame = tk.Frame(edit_window)
+        entry_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.review_content.config(text=book_review)
+        #create the entry fields
+        title_field = tk.Entry(entry_frame)
+        author_field = tk.Entry(entry_frame)
+        genre_field = tk.Entry(entry_frame)
+        year_field = tk.Entry(entry_frame)
+
+        #give the entry fields labels and actually pack them
+        tk.Label(entry_frame, text="Enter Book Title:").pack(anchor="w")
+        title_field.pack(anchor="w", fill=tk.X, ipadx=100)
+        tk.Label(entry_frame, text="Enter Author Name:").pack(anchor="w")
+        author_field.pack(anchor="w", fill=tk.X, ipadx=100)
+        tk.Label(entry_frame, text="Enter Book Genre:").pack(anchor="w")
+        genre_field.pack(anchor="w", fill=tk.X, ipadx=100)
+        tk.Label(entry_frame, text="Enter Year Published:").pack(anchor="w")
+        year_field.pack(anchor="w", fill=tk.X, ipadx=100)
+        tk.Label(entry_frame, text="Enter Reading Status:").pack(anchor="w")
+        status_field.pack(anchor="w")
+
+        # create a list to hold the references to the text boxes to be passed to apply_edit function
+        text_field_references = [title_field, author_field, genre_field, year_field, status_field]
+
+        #create the frame where the buttons show up, create the buttons, and then finally pack the frame and buttons
+        button_frame = tk.Frame(edit_window, bg="gray90")
+        cancel_button = tk.Button(button_frame, text="Cancel Edit", command=edit_window.destroy) #If not applying edit, simply destroy the window, no change
+        submit_button = tk.Button(button_frame, text="Apply Edit", command=lambda: self.apply_review_edit(text_field_references, edit_window)) #Apply edit, destroy window afterward
+        button_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        cancel_button.pack(side=tk.LEFT, padx=10, pady=10)
+        submit_button.pack(side=tk.RIGHT, padx=10, pady=10)
 
     def edit_book_toplevel(self):
         """use old attributes to get book item, display window for new attributes, make change"""
@@ -463,20 +556,26 @@ class BookHuntGUI:
         header_frame.pack(fill=tk.X)
 
         # create the frame where the review entries will show up
-        entry_frame = tk.Frame(review_window, bg="gray90", height=80)
+        entry_frame = tk.Frame(review_window, bg="gray90", height=1000)
         entry_frame.pack(fill=tk.X)
         
         # create a label giving user interaction instructions
 
-        # reviews: dict = self.db.get_reviews(book_id)
+        # returns a dictionary of each review with key as primary key and values
+        reviews = self.db.reviews(book_id)
+        print(reviews)
         # for every review, we will pack a new label
-        # review_content = ""
-        # tk.Label(entry_frame, text=review_content, font=("Arial", 12, "bold")).pack(side=tk.TOP)
+        for review in reviews:
+            review_content = review['review']
+            date_created = review['date_created']
+            last_updated = review['last_updated']
 
-        # for now:
-        review_content = self.db.get_specific_book(book_id)[6]
-        print(review_content)
-        tk.Label(entry_frame, text=f"review 1: {review_content}", font=("Arial", 12, "bold")).pack(side=tk.TOP)
+            review_frame = tk.Frame(entry_frame, bg="gray80", height=80)
+            review_frame.pack(pady=10)
+
+            tk.Label(review_frame, text=review_content, font=("Arial", 12, "bold")).pack(pady=5)
+            tk.Label(review_frame, text=f"created: {date_created}\nlast updated: {last_updated}", font=("Arial", 12, "bold")).pack(pady=5)
+
 
     def apply_edit(self, text_fields, window) :
         """get the new attributes from the given entry field references, apply the edit"""

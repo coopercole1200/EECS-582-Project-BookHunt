@@ -22,13 +22,12 @@ class DatabaseBackend:
         self._create_tables()
 
     def _create_tables(self):
-        # Create initial tables
-        # Basic book info, we can change/add features later
-        #Creates columns for each in table
-
         # enable foreign key enforcing
         self.cursor.execute("PRAGMA foreign_keys = ON;")
 
+        # Create initial tables
+        # Basic book info, we can change/add features later
+        #Creates columns for each in table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS books (
                 id INTEGER PRIMARY KEY,
@@ -131,7 +130,7 @@ class DatabaseBackend:
     # review helper methods
     def create_review(self, book_id, title: str, review: str):
         """create a new review on a book"""
-        today = date.today().isoformat() # the day the create_review() method is run, in format YYYY-MM-DD
+        today = date.today().strftime("%B %d, %Y") # the day the create_review() method is run, in format '[month] [day], [year]'
         author = "TODO" # get author from user table
 
         self.cursor.execute("""
@@ -142,10 +141,10 @@ class DatabaseBackend:
     
     def update_review(self, review_id, new_title: str, new_review: str):
         """update an existing review on a book"""
-        today = date.today().isoformat()
+        today = date.today().strftime("%B %d, %Y") # the day the update_review() method is run, in format '[month] [day], [year]'
 
         self.cursor.execute("""
-            UPDATE reviews SET title = ?, review = ?, last_updated = ? WHERE id = ?
+            UPDATE reviews SET title = ?, review = ?, last_updated = ? WHERE review_id = ?
         """, (new_title, new_review, today, str(review_id)))
         self.connection.commit()
 
@@ -154,7 +153,7 @@ class DatabaseBackend:
         self.cursor.execute('DELETE FROM reviews WHERE id = ?', (str(review_id)))
         self.connection.commit()
 
-    def get_reviews(self, book_id):
+    def reviews(self, book_id):
         """get all reviews of a certain book"""
         self.cursor.execute("""SELECT * FROM reviews WHERE book_id = ?
         """, str(book_id))
@@ -309,7 +308,7 @@ if __name__ == "__main__":
     # Check if database is empty
     books = db.get_all_books()
 
-    """if len(books) == 0:
+    if len(books) == 0:
         print("Adding sample books...")
         # Add some sample books directly for testing
         db.cursor.execute('''
@@ -330,7 +329,7 @@ if __name__ == "__main__":
         db.connection.commit()
         print("Sample books added!")
     else:
-        print(f"Database already has {len(books)} books")"""
+        print(f"Database already has {len(books)} books")
     
     # Display all books
     books = db.get_all_books()
