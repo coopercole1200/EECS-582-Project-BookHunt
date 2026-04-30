@@ -199,7 +199,7 @@ class DatabaseBackend:
     def create_review(self, book_id, title: str, review: str):
         """create a new review on a book"""
         today = date.today().strftime("%B %d, %Y") # the day the create_review() method is run, in format '[month] [day], [year]'
-        author = "TODO" # get author from user table
+        author = self.current_username # get author from user table
 
         self.cursor.execute("""
             INSERT INTO reviews (book_id, title, author, review, date_created, last_updated)
@@ -218,7 +218,7 @@ class DatabaseBackend:
 
     def delete_review(self, review_id):
         """delete an existing review on a book"""
-        self.cursor.execute('DELETE FROM reviews WHERE id = ?', (str(review_id)))
+        self.cursor.execute('DELETE FROM reviews WHERE review_id = ?', (str(review_id)))
         self.connection.commit()
 
     def reviews(self, book_id):
@@ -335,26 +335,6 @@ class DatabaseBackend:
         rows = self.cursor.fetchall()
         return [dict(row) for row in rows]
 
-###############################################################################REVIEW RELATED FUNCTIONS#####################################################################
-    def update_review(self, book_id, new):
-
-        self._require_login()
-        bt = self._books_table(self.current_user_id)
-
-        query = f"UPDATE {bt} SET review_content = '{new}' WHERE id = {book_id}"
-        self.cursor.execute(query)
-        self.connection.commit()
-
-    def delete_review(self, book_id):
-
-        self._require_login()
-        bt = self._books_table(self.current_user_id)
-
-        query = f"UPDATE {bt} SET review_content = NULL WHERE id = {book_id}"
-        self.cursor.execute(query)
-        self.connection.commit()
-
-###############################################################################TAG RELATED FUNCTIONS########################################################################
     def create_tag(self, label: str) -> int:
 
         self._require_login()

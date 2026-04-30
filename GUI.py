@@ -405,7 +405,7 @@ class BookHuntGUI:
         #tk.Label(self.review_frame, text="Current Review", font=("Arial", 16, "underline")).pack(side=tk.TOP)
         self.review_content = tk.Label(
             self.review_frame,
-            text="No review yet.",
+            text="Double click on your book in the view below to see all your reviews!",
             font=("Arial", 14),
             bg="SlateBlue2",
             fg="white"
@@ -423,7 +423,7 @@ class BookHuntGUI:
         ).pack(side=tk.LEFT, padx=(10, 5))
         self.review_entry = tk.Entry(self.review_frame)
         self.review_stars = tk.Frame(self.review_frame)
-        update_review_button = ttk.Button(self.review_frame, text="Add/Update Review", cursor='hand2', bootstyle='primary', command=lambda: self.update_review(selectedStarValue))
+        update_review_button = ttk.Button(self.review_frame, text="Add Review", cursor='hand2', bootstyle='primary', command=lambda: self.create_review(selectedStarValue))
         delete_review_button = ttk.Button(self.review_frame, text="Delete Review", cursor='hand2', bootstyle='warning-outline', command=lambda: self.delete_review())
 
         self.review_entry.pack(side=tk.LEFT)
@@ -641,9 +641,10 @@ class BookHuntGUI:
 
 
     # THESE METHODS ARE UNSTABLE AND IM SCARED
-    def create_review(self):
+    def create_review(self, star_value):
         """user creates a new review"""
-        new_title = "TODO"
+        new_title = self.db.current_username
+        print(star_value)
         new_review = self.review_entry.get() # our Entry widget
 
         selected = self.tree.selection()[0]
@@ -673,10 +674,8 @@ class BookHuntGUI:
         
 
     def delete_review(self):
-        # not working right now
-        selected = self.tree.selection()[0]
-        if not selected:
-            return
+        review_id = self.review_entry.get() # our Entry widget
+        self.db.delete_review(review_id)
 
     def add_review(self):
         #create the pop-up window, force focus onto it, and prevent user from interacting with main window while pop-up is up
@@ -809,39 +808,95 @@ class BookHuntGUI:
         print(book_data)
 
         #create the pop-up window, force focus onto it, and prevent user from interacting with main window while pop-up is up
-        review_window = tk.Toplevel(self.root)
+        review_window = ttk.Toplevel(self.root)
         review_window.title(f"{title} Reviews")
-        review_window.geometry("500x450")
+        review_window.geometry("500x800")
         review_window.attributes('-topmost', True)
         review_window.focus_set()
         review_window.grab_set()
 
-        # create the header frame where the title of the book will go
-        header_frame = tk.Frame(review_window, bg="SlateBlue3", height=120)
-        label_text = f"{title}, {author}"
-        tk.Label(header_frame, text=label_text, font=("Arial", 20, "bold")).pack(side=tk.TOP)
-        header_frame.pack(fill=tk.X)
-
-        # create the frame where the review entries will show up
-        entry_frame = tk.Frame(review_window, bg="gray90", height=1000)
-        entry_frame.pack(fill=tk.X)
+        ### Title ###
+        title_frame = ttk.Frame(review_window, bootstyle='primary', height=120)
+        title_frame.pack(fill=tk.X)
+        title_frame.pack_propagate(False)
         
-        # create a label giving user interaction instructions
+        right_header = ttk.Frame(title_frame, bootstyle='primary')
+        right_header.pack(side=tk.RIGHT, padx=16)
+        ttk.Label(
+            right_header,
+            text=f"👤  {self.db.current_username}",
+            font=("Arial", 11),
+            bootstyle='inverse-primary'
+        ).pack(anchor="e")
 
+        label_text = f"{title}, {author}"
+        emoji = ""
+
+        ttk.Label(
+            title_frame,
+            text=f"{emoji}  {label_text}  {emoji}",
+            font=("Arial", 24, "bold"),
+            bootstyle="inverse-primary",
+        ).pack(expand=True)
+
+        reviews_frame = tk.Frame(review_window, bg="gray90")
+        reviews_frame.pack(fill=tk.X, pady=5)
+
+        # scroll wheel :p
+        # Container
+        container = ttk.Frame(review_window)
+        container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Canvas (this is what actually scrolls)
+        canvas = tk.Canvas(container, highlightthickness=0)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Scrollbar
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Frame inside the canvas (this holds your reviews)
+        scrollable_frame = ttk.Frame(canvas)
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
+        def on_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        scrollable_frame.bind("<Configure>", on_configure)
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
         # returns a dictionary of each review with key as primary key and values
         reviews = self.db.reviews(book_id)
+
         print(reviews)
         # for every review, we will pack a new label
         for review in reviews:
+            review_title = f"review no. {review['review_id']}"
+            review_author = review['author']
             review_content = review['review']
             date_created = review['date_created']
             last_updated = review['last_updated']
 
-            review_frame = tk.Frame(entry_frame, bg="gray80", height=80)
-            review_frame.pack(pady=10)
+            review_frame = ttk.Labelframe(scrollable_frame, text=review_title, bootstyle='primary')
+            review_frame.pack()
 
-            tk.Label(review_frame, text=review_content, font=("Arial", 12, "bold")).pack(pady=5)
-            tk.Label(review_frame, text=f"created: {date_created}\nlast updated: {last_updated}", font=("Arial", 12, "bold")).pack(pady=5)
+            ttk.Label(
+                review_frame,
+                text=f"By {review_author} | Created: {date_created} | Updated: {last_updated}",
+                font=("Arial", 10),
+                bootstyle="secondary"
+            ).pack(anchor="w", padx=10, pady=(0, 5))
+
+            ttk.Label(
+                review_frame,
+                text=review_content,
+                font=("Arial", 16),
+                wraplength=800,
+                justify="left"
+            ).pack(anchor="w", padx=10, pady=5)
 
 
     def apply_edit(self, text_fields, window, frame) :
