@@ -10,6 +10,8 @@ Last Modified by: Cole Cooper
 # Import Libraries and Tools
 import sqlite3
 from typing import List, Dict, Optional
+from datetime import date
+
 class DatabaseBackend:
     def __init__(self, db_path: str = "books.db"):
         # Initialize database connection and create tables
@@ -24,6 +26,8 @@ class DatabaseBackend:
 
 ###################################################################################TABLE CREATION FUNCTION##################################################################
     def _create_tables(self):
+        # enable foreign key enforcing
+        self.cursor.execute("PRAGMA foreign_keys = ON;")
 
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
@@ -66,7 +70,21 @@ class DatabaseBackend:
                 status         TEXT    DEFAULT "to read"
             )
         ''')
-
+        
+        # reviews
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS reviews (
+                review_id INTEGER PRIMARY KEY,
+                book_id INTEGER,
+                title TEXT NOT NULL,
+                author TEXT NOT NULL,
+                review TEXT,
+                date_created TEXT NOT NULL,
+                last_updated TEXT NOT NULL,
+                FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+            )
+        ''')
+        
         # Tags table
         self.cursor.execute(f'''
              CREATE TABLE IF NOT EXISTS {tt} (
@@ -176,6 +194,40 @@ class DatabaseBackend:
             query = f"UPDATE {bt} SET rating=? WHERE id=?"
             self.cursor.execute(query, (new_attributes[0], book_id))
         self.connection.commit()
+    
+    # review helper methods
+    def create_review(self, book_id, title: str, review: str):
+        """create a new review on a book"""
+        today = date.today().strftime("%B %d, %Y") # the day the create_review() method is run, in format '[month] [day], [year]'
+        author = "TODO" # get author from user table
+
+        self.cursor.execute("""
+            INSERT INTO reviews (book_id, title, author, review, date_created, last_updated)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (str(book_id), title, author, review, today, today))
+        self.connection.commit()
+    
+    def update_review(self, review_id, new_title: str, new_review: str):
+        """update an existing review on a book"""
+        today = date.today().strftime("%B %d, %Y") # the day the update_review() method is run, in format '[month] [day], [year]'
+
+        self.cursor.execute("""
+            UPDATE reviews SET title = ?, review = ?, last_updated = ? WHERE review_id = ?
+        """, (new_title, new_review, today, str(review_id)))
+        self.connection.commit()
+
+    def delete_review(self, review_id):
+        """delete an existing review on a book"""
+        self.cursor.execute('DELETE FROM reviews WHERE id = ?', (str(review_id)))
+        self.connection.commit()
+
+    def reviews(self, book_id):
+        """get all reviews of a certain book"""
+        self.cursor.execute("""SELECT * FROM reviews WHERE book_id = ?
+        """, str(book_id))
+        rows = self.cursor.fetchall()
+
+        return [dict(row) for row in rows]
 
     # Count the number of entries in the book table
     def get_book_count(self) :
